@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- The test project lives in a sub-folder; keep its files out of the web project's build. -->
+  <ItemGroup>
+    <Compile Remove="UbuntuLedger.Tests/**" />
+    <Content Remove="UbuntuLedger.Tests/**" />
+    <EmbeddedResource Remove="UbuntuLedger.Tests/**" />
+    <None Remove="UbuntuLedger.Tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

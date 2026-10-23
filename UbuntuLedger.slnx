@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="UbuntuLedger.csproj" />
+  <Project Path="UbuntuLedger.Tests/UbuntuLedger.Tests.csproj" />
+</Solution>
