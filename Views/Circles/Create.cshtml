@@ -1,0 +1,86 @@
+@model CreateCircleViewModel
+@{
+    ViewData["Title"] = "Start a circle";
+    ViewData["MaxWidth"] = 1000;
+    Layout = "_PageLayout";
+    string[][] steps =
+    [
+        ["You become the treasurer", "You record every loan and repayment."],
+        ["Your people get an invite", "They see it when they sign in with the phone number you added."],
+        ["They accept to join", "Then they can see their own loans and balances. Only theirs."],
+    ];
+}
+<a class="back-link" asp-action="Index">@Ui.Icon("chevronLeft")Your circles</a>
+<div>
+    <p class="eyebrow">New circle</p>
+    <h1 class="page-title">Start a circle</h1>
+    <p class="page-sub">You will be its treasurer. Only you can add people, record loans and record repayments.</p>
+</div>
+<div class="split">
+    <form class="card card--pad form split__main" method="post" asp-action="Create">
+        @* Enter key submits the first button in the form, so make that "Start circle" rather than "Add person". *@
+        <button type="submit" name="command" value="create" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+        <label class="field">
+            Name of your circle
+            <input class="input" asp-for="Name" placeholder="e.g. Ndlovu Family Stokvel" />
+            <span asp-validation-for="Name"></span>
+        </label>
+        <div class="divider-top" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+                <span style="font-size:14px;font-weight:600">Add the people you lend to</span>
+                <p class="small muted" style="margin-top:2px">They get an invite on their phone number. Nobody can join unless you add them.</p>
+            </div>
+            <button type="button" class="btn btn--dashed" data-pick-contact data-name="#NewName" data-phone="#NewPhone" hidden>@Ui.Icon("contacts")Choose from my contacts</button>
+            <div class="form-grid form-grid--tight">
+                <label class="field">Name<input class="input" asp-for="NewName" placeholder="e.g. Nomsa" /></label>
+                <label class="field">
+                    Phone number
+                    <input class="input" asp-for="NewPhone" type="tel" inputmode="tel" placeholder="e.g. 083 220 6718" />
+                    <span asp-validation-for="NewPhone"></span>
+                </label>
+            </div>
+            <button type="submit" name="command" value="add" formnovalidate class="btn btn--secondary btn--sm" style="align-self:flex-start">@Ui.Icon("plus", 18, 2.1)Add person</button>
+            @if (Model.People.Count > 0)
+            {
+                <div class="kv">
+                    @for (var i = 0; i < Model.People.Count; i++)
+                    {
+                        var p = Model.People[i];
+                        var label = string.IsNullOrWhiteSpace(p.Name) ? p.Phone : p.Name;
+                        <div class="row" style="min-height:64px;padding:8px 8px 8px 14px;@(i == 0 ? "border-top:0" : "")">
+                            <input type="hidden" name="People[@i].Name" value="@p.Name" />
+                            <input type="hidden" name="People[@i].Phone" value="@p.Phone" />
+                            @Ui.Avatar(PersonExtensions.InitialsOf(label), "40")
+                            <span class="row__main" style="gap:0"><span class="row__title ellipsis">@label</span><span class="row__sub">@p.Phone</span></span>
+                            <button type="submit" name="command" value="remove-@i" formnovalidate class="icon-btn" aria-label="Remove @label">@Ui.Icon("close")</button>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="muted" style="padding:14px 16px;border-radius:12px;background:var(--cream);font-size:14px">No one added yet. You can also invite people after you start the circle.</p>
+            }
+        </div>
+        <div class="form-actions">
+            <a class="btn btn--secondary" asp-action="Index">Cancel</a>
+            <button type="submit" name="command" value="create" class="btn btn--primary">Start circle</button>
+        </div>
+    </form>
+    <aside class="card split__side">
+        <div class="steps-head geo-host">
+            @Ui.Geo(dark: true)
+            <div class="steps-head__title">What happens next</div>
+            <div class="steps-head__sub">Simple, and always in your hands.</div>
+        </div>
+        <div class="steps">
+            @for (var i = 0; i < steps.Length; i++)
+            {
+                <div class="step">
+                    <span class="step__n">@(i + 1)</span>
+                    <div><div class="step__title">@steps[i][0]</div><div class="step__text">@steps[i][1]</div></div>
+                </div>
+            }
+        </div>
+    </aside>
+</div>

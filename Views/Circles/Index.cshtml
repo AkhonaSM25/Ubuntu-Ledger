@@ -1,0 +1,63 @@
+@model CirclesViewModel
+@{
+    ViewData["Title"] = "Your circles";
+    Layout = "_PageLayout";
+}
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">Sawubona, @Model.Me.FirstName</p>
+        <h1 class="page-title">Your circles</h1>
+        <p class="page-sub">A circle is a private group that lends and repays together. You can only join a circle if its treasurer adds you.</p>
+    </div>
+    <a class="btn btn--primary stretch-m" asp-action="Create">@Ui.Icon("plus", 20, 2.1)Start a new circle</a>
+</div>
+
+<section class="card">
+    <div class="card__head"><h2 class="section-title">My circles</h2></div>
+    @foreach (var m in Model.Circles)
+    {
+        var treasurer = m.Role == CircleRole.Treasurer;
+        <a class="row row--tall" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@m.CircleId">
+            @Ui.Avatar(m.Circle.Name[..1].ToUpperInvariant(), "square", solid: treasurer)
+            <span class="row__main">
+                <span class="row__title ellipsis" style="font-size:17px">@m.Circle.Name</span>
+                <span class="row__sub">@Format.Plural(m.Circle.Memberships.Count, "member") · @(treasurer ? "you are the treasurer" : "you are a member")</span>
+            </span>
+            @Ui.Chip(treasurer ? "treasurer" : "member")
+            <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+        </a>
+    }
+    @if (Model.Circles.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("You are not in a circle yet", (string?)"Start one, or ask a treasurer to add your phone number.", "default"))" />
+    }
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="section-title">Invitations</h2>
+        <span class="count-pill count-pill--warn">@Model.Invitations.Count</span>
+    </div>
+    @foreach (var i in Model.Invitations)
+    {
+        <div class="row" style="flex-wrap:wrap;gap:14px;padding:16px 20px">
+            @Ui.Avatar(i.Circle.Name[..1].ToUpperInvariant(), "square")
+            <span class="row__main" style="flex:1 1 200px;gap:2px">
+                <span class="row__title" style="font-size:17px">@i.Circle.Name</span>
+                <span class="row__sub">Added by @i.InvitedBy.Name · @Format.Plural(i.Circle.Memberships.Count, "member")</span>
+            </span>
+            <span class="actions">
+                <form class="inline-form" method="post" asp-action="Decline" asp-route-id="@i.Id">
+                    <button type="submit" class="btn btn--secondary btn--sm">Decline</button>
+                </form>
+                <form class="inline-form" method="post" asp-action="Accept" asp-route-id="@i.Id">
+                    <button type="submit" class="btn btn--primary btn--sm">Accept</button>
+                </form>
+            </span>
+        </div>
+    }
+    @if (Model.Invitations.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("No invitations right now", (string?)"When a treasurer adds your phone number, their invitation shows up here.", "default"))" />
+    }
+</section>

@@ -1,0 +1,111 @@
+@model DashboardViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = access.Circle.Name;
+    ViewData["Nav"] = "dashboard";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var hour = DateTime.Now.Hour;
+    var greeting = access.IsTreasurer ? (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") : "Hello";
+}
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">@Format.LongDate(Model.Today)</p>
+        <h1 class="page-title">@greeting, @access.Me.FirstName</h1>
+        <p class="page-sub">@(access.IsTreasurer ? $"Here is how {access.Circle.Name} is doing today." : "Here is what you owe and what you have paid.")</p>
+    </div>
+    @if (access.IsTreasurer && Model.HasLoans)
+    {
+        <div class="actions">
+            <a class="btn btn--gold" asp-controller="Repayments" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("down", 20, 2.1)Record repayment</a>
+            <a class="btn btn--primary" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)New loan</a>
+        </div>
+    }
+</div>
+
+<partial name="_StatGrid" model="Model.Stats" />
+
+@if (Model.HasLoans)
+{
+    <div class="two-col">
+        <section class="card">
+            <div class="card__head">
+                <h2 class="section-title">Overdue loans</h2>
+                <span class="count-pill count-pill--bad">@Model.Overdue.Count</span>
+            </div>
+            @foreach (var l in Model.Overdue)
+            {
+                <a class="row" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                    @Ui.Avatar(l.Loan.Borrower.Initials)
+                    <span class="row__main">
+                        <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                        <span class="row__sub" style="color:var(--bad);font-weight:600">@l.Loan.Reference · @Format.Plural(l.Days, "day") overdue</span>
+                    </span>
+                    <span class="row__end"><span class="row__amt">@Format.Zar(l.Balance)</span><span class="row__caption">owing</span></span>
+                    <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+                </a>
+            }
+            @if (Model.Overdue.Count == 0)
+            {
+                <partial name="_EmptyState" model="@(("Nothing is overdue", (string?)"Every payment is on time. Well done, Circle.", "default"))" />
+            }
+        </section>
+        <section class="card">
+            <div class="card__head">
+                <h2 class="section-title">Due this week</h2>
+                <span class="count-pill count-pill--warn">@Model.DueSoon.Count</span>
+            </div>
+            @foreach (var l in Model.DueSoon)
+            {
+                <a class="row" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                    @Ui.Avatar(l.Loan.Borrower.Initials)
+                    <span class="row__main">
+                        <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                        <span class="row__sub" style="color:var(--warn);font-weight:600">@l.Loan.Reference · @(l.Days == 0 ? "due today" : "due in " + Format.Plural(l.Days, "day"))</span>
+                    </span>
+                    <span class="row__end"><span class="row__amt">@Format.Zar(l.NextAmount)</span><span class="row__caption">instalment</span></span>
+                    <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+                </a>
+            }
+            @if (Model.DueSoon.Count == 0)
+            {
+                <partial name="_EmptyState" model="@(("No payments due in the next 7 days", (string?)null, "plain"))" />
+            }
+        </section>
+    </div>
+}
+else if (access.IsTreasurer)
+{
+    <section class="card card--pad geo-host">
+        @Ui.Geo(right: true)
+        <div class="form">
+            <div>
+                <h2 style="font-size:20px;font-weight:800">Your circle is ready</h2>
+                <p class="page-sub" style="margin-top:4px">You are the treasurer. Two steps and you are lending.</p>
+            </div>
+            <div class="onboard-step">
+                <span class="onboard-step__n@(Model.HasMembers ? " onboard-step__n--off" : "")">@(Model.HasMembers ? Ui.Icon("check", 18, 3) : new HtmlString("1"))</span>
+                <div class="onboard-step__text">
+                    <div class="step__title">Invite your people</div>
+                    <div class="step__text">Add the phone numbers of the people you lend to. They join once they accept.</div>
+                </div>
+                <a class="btn @(Model.HasMembers ? "btn--secondary" : "btn--primary") stretch-m" asp-controller="Members" asp-action="Invite" asp-route-circleId="@circleId">Invite someone</a>
+            </div>
+            <div class="onboard-step">
+                <span class="onboard-step__n@(Model.HasMembers ? "" : " onboard-step__n--off")">2</span>
+                <div class="onboard-step__text">
+                    <div class="step__title@(Model.HasMembers ? "" : " muted")">Record the first loan</div>
+                    <div class="step__text">@(Model.HasMembers ? "Someone has joined. You can lend to them now." : "Available once someone accepts your invite.")</div>
+                </div>
+                @if (Model.HasMembers)
+                {
+                    <a class="btn btn--primary stretch-m" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId">New loan</a>
+                }
+            </div>
+        </div>
+    </section>
+}
+else
+{
+    <partial name="_EmptyState" model="@(("No loans here yet", (string?)$"When the treasurer of {access.Circle.Name} records a loan for you, you will see it here.", "hero"))" />
+}
