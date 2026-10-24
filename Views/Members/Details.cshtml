@@ -1,0 +1,67 @@
+@model MemberDetailViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var p = Model.Member.Person;
+    ViewData["Title"] = p.Name;
+    ViewData["Nav"] = "members";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")All members</a>
+<section class="card card--pad geo-host">
+    @Ui.Geo(right: true, opacity: 0.8)
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+        @Ui.Avatar(p.Initials, "big")
+        <div style="flex:1 1 220px;min-width:0">
+            <div class="title-row"><h1 class="page-title">@p.Name</h1>@Ui.Chip(Model.Member.Status)</div>
+            <p class="page-sub">Member since @Format.MonthYear(Model.MemberSince) · @PhoneNumber.Format(p.Phone)</p>
+        </div>
+        <a class="btn btn--primary btn--sm" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId" asp-route-borrowerId="@p.Id">@Ui.Icon("plus", 18, 2.1)New loan</a>
+    </div>
+</section>
+<partial name="_StatGrid" model="Model.Stats" />
+<div class="two-col">
+    <section class="card">
+        <div class="card__head"><h2 class="section-title">Loan history</h2></div>
+        @foreach (var l in Model.Member.Loans.OrderByDescending(l => l.Loan.StartDate))
+        {
+            <a class="row row--76" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                <span class="avatar avatar--44 avatar--icon">@Ui.Icon("wallet", 22, 1.9)</span>
+                <span class="row__main" style="gap:2px">
+                    <span class="row__title" style="font-weight:800">@Format.Zar(l.Loan.Principal)</span>
+                    <span class="row__sub">@l.Loan.Reference · issued @Format.Date(l.Loan.StartDate)</span>
+                </span>
+                <span class="row__end">
+                    <span style="font-weight:700">@(l.IsOpen ? Format.Zar(l.Balance) + " owing" : "Settled")</span>
+                    @Ui.Chip(l.Status)
+                </span>
+            </a>
+        }
+        @if (Model.Member.Loans.Count == 0)
+        {
+            <partial name="_EmptyState" model="@(("No loans yet", (string?)$"Loans you record for {p.FirstName} show here.", "default"))" />
+        }
+    </section>
+    <section class="card timeline">
+        <h2 class="section-title">Repayment timeline</h2>
+        <p class="small muted" style="margin:4px 0 16px">Newest first, with the balance owing after each entry.</p>
+        <div>
+            @foreach (var e in Model.Timeline)
+            {
+                <div class="tl">
+                    <div class="tl__rail">
+                        <span class="tl__dot" style="background:@(e.IsPayment ? "var(--green)" : "var(--gold)")"></span>
+                        <span class="tl__line"></span>
+                    </div>
+                    <div class="tl__body">
+                        <div style="min-width:0"><div style="font-weight:700">@e.Title</div><div class="small muted">@Format.Date(e.Date) · @e.Sub</div></div>
+                        <div class="tl__end">
+                            <div style="font-weight:800;color:@(e.IsPayment ? "var(--ok)" : "var(--ink)")">@(e.IsPayment ? "− " : "+ ")@Format.Zar(Math.Abs(e.Amount))</div>
+                            <div class="small muted">Balance @Format.Zar(e.Balance)</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</div>

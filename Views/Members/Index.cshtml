@@ -1,0 +1,76 @@
+@model MembersViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Members";
+    ViewData["Nav"] = "members";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var sub = Model.MemberCount > 0
+        ? $"{Model.MemberCount} {(Model.MemberCount == 1 ? "person" : "people")} in {access.Circle.Name}" + (Model.InvitedCount > 0 ? $" · {Model.InvitedCount} invited" : "")
+        : Model.InvitedCount > 0 ? $"{Model.InvitedCount} invited to {access.Circle.Name}. Nobody has joined yet." : $"Nobody has joined {access.Circle.Name} yet.";
+    (string Key, string Label)[] filters = [("all", "All"), ("ok", "Up to date"), ("soon", "Due soon"), ("overdue", "Overdue")];
+}
+<div class="page-head">
+    <div class="page-head__text">
+        <h1 class="page-title">Members</h1>
+        <p class="page-sub">@sub</p>
+    </div>
+    <a class="btn btn--secondary btn--sm" asp-action="Invite" asp-route-circleId="@circleId">@Ui.Icon("plus", 18, 2.1)Invite someone</a>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+    <form method="get" role="search">
+        <input type="hidden" name="filter" value="@Model.Filter" />
+        <label class="affix search">
+            <span class="muted">@Ui.Icon("search")</span>
+            <span class="sr-only">Search members</span>
+            <input type="search" name="q" value="@Model.Query" placeholder="Search by name" data-autosubmit />
+        </label>
+    </form>
+    <nav class="filter-chips" aria-label="Filter by status">
+        @foreach (var f in filters)
+        {
+            <a class="filter-chip" asp-action="Index" asp-route-circleId="@circleId" asp-route-filter="@(f.Key == "all" ? null : f.Key)" asp-route-q="@Model.Query"
+               aria-current="@(Model.Filter == f.Key ? "true" : null)">@f.Label · @Model.Counts[f.Key]</a>
+        }
+    </nav>
+</div>
+<section class="card">
+    <div class="table-head only-desk">
+        <span style="flex:1">Member</span><span style="width:110px">Active loans</span>
+        <span style="width:130px;text-align:right">Total owed</span><span style="width:140px">Status</span><span style="width:18px"></span>
+    </div>
+    @foreach (var m in Model.Rows)
+    {
+        <a class="row row--76" asp-action="Details" asp-route-circleId="@circleId" asp-route-personId="@m.Person.Id">
+            @Ui.Avatar(m.Person.Initials)
+            <span class="row__main">
+                <span class="row__title ellipsis">@m.Person.Name</span>
+                <span class="row__sub only-mob">@Format.Plural(m.Active.Count, "active loan")</span>
+                <span class="only-mob" style="align-self:flex-start">@Ui.Chip(m.Status)</span>
+            </span>
+            <span class="muted only-desk" style="width:110px">@m.Active.Count active</span>
+            <span class="row__amt member-owed">@Format.Zar(m.Owed)</span>
+            <span class="only-desk" style="width:140px">@Ui.Chip(m.Status)</span>
+            <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+        </a>
+    }
+    @foreach (var p in Model.Pending)
+    {
+        <a class="row row--76" asp-action="Invite" asp-route-circleId="@circleId">
+            @Ui.Avatar(p.Name.Any(char.IsLetter) ? PersonExtensions.InitialsOf(p.Name) : "?")
+            <span class="row__main">
+                <span class="row__title ellipsis">@p.Name</span>
+                <span class="row__sub only-mob">Waiting to accept</span>
+                <span class="only-mob" style="align-self:flex-start">@Ui.Chip("invited")</span>
+            </span>
+            <span class="muted only-desk" style="width:110px">—</span>
+            <span class="row__amt member-owed">—</span>
+            <span class="only-desk" style="width:140px">@Ui.Chip("invited")</span>
+            <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+        </a>
+    }
+    @if (Model.Rows.Count + Model.Pending.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("No members match", (string?)"Try a different name or choose “All”.", "inset"))" />
+    }
+</section>
