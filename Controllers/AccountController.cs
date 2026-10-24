@@ -1,10 +1,11 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using UbuntuLedger.Data;
 using UbuntuLedger.Models;
 using UbuntuLedger.Services;
@@ -21,7 +22,7 @@ public class AccountController(LedgerDbContext db, CircleService circles) : Cont
     public IActionResult Login(string? returnUrl) =>
         View(new LoginViewModel { Phone = PhoneNumber.Format(SeedData.TreasurerPhone), ReturnUrl = returnUrl });
 
-    [HttpPost("/login"), ValidateAntiForgeryToken]
+    [HttpPost("/login"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid) return View(model);
