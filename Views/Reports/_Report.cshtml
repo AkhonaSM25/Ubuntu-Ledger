@@ -1,0 +1,63 @@
+@model ReportsViewModel
+@* Chart and monthly table, shared by the reports page and its printable version. *@
+<section class="card card--pad">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+        <div><h2 class="section-title">Lent vs repaid</h2><p class="small muted" style="margin-top:2px">@Model.Range</p></div>
+        @if (ViewData["Print"] is not true)
+        {
+            <form method="get" class="period">
+                <label class="field">
+                    Period
+                    <select class="input" name="period" data-autosubmit>
+                        <option value="6" selected="@(Model.Period == 6)">Last 6 months</option>
+                        <option value="3" selected="@(Model.Period == 3)">Last 3 months</option>
+                    </select>
+                </label>
+                <noscript><button type="submit" class="btn btn--secondary btn--xs">Show</button></noscript>
+            </form>
+        }
+    </div>
+    <div class="chart" role="img" aria-label="Bar chart of money lent and repaid per month, @Model.Range. Exact figures are in the table below.">
+        <div class="chart__plot">
+            @for (var i = 1; i <= 4; i++)
+            {
+                <div class="chart__grid" style="bottom:@(i * 25)%"><span>R&nbsp;@(Model.AxisStep * i / 1000)k</span></div>
+            }
+            <div class="chart__axis"></div>
+            <div class="chart__cols">
+                @foreach (var m in Model.Months)
+                {
+                    <div class="chart__col">
+                        <div class="chart__bar-wrap"><span class="chart__k" style="color:var(--gold-ink)">@Format.Kilo(m.Lent)</span><div class="chart__bar lent" style="height:@Pct(m.Lent)"></div></div>
+                        <div class="chart__bar-wrap"><span class="chart__k" style="color:var(--green)">@Format.Kilo(m.Repaid)</span><div class="chart__bar repaid" style="height:@Pct(m.Repaid)"></div></div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="chart__labels">@foreach (var m in Model.Months) { <span>@Format.Mon[m.Month.Month - 1]</span> }</div>
+    </div>
+    <div class="legend"><span><i class="lent"></i>Lent</span><span><i class="repaid"></i>Repaid</span></div>
+</section>
+<section class="card">
+    <div class="card__head"><h2 class="section-title">Monthly summary</h2></div>
+    <div role="table" aria-label="Monthly summary">
+        <div role="row" class="sum-row sum-row--head">
+            <span role="columnheader">Month</span><span role="columnheader">Lent</span><span role="columnheader">Repaid</span><span role="columnheader">Interest</span>
+        </div>
+        @foreach (var m in Model.Months.Reverse())
+        {
+            <div role="row" class="sum-row">
+                <span role="cell"><span class="only-desk">@Format.MonthYear(m.Month)</span><span class="only-mob">@Format.Mon[m.Month.Month - 1]</span></span>
+                <span role="cell">@Format.Zar(m.Lent)</span><span role="cell">@Format.Zar(m.Repaid)</span><span role="cell">@Format.Zar(m.Interest)</span>
+            </div>
+        }
+        <div role="row" class="sum-row sum-row--total">
+            <span role="cell">Total</span><span role="cell">@Format.Zar(Model.Months.Sum(m => m.Lent))</span>
+            <span role="cell">@Format.Zar(Model.Months.Sum(m => m.Repaid))</span><span role="cell">@Format.Zar(Model.Months.Sum(m => m.Interest))</span>
+        </div>
+    </div>
+</section>
+@functions {
+    // Bars are a share of the plot height, with a 3px floor so tiny amounts stay visible.
+    string Pct(decimal v) => v <= 0 ? "0" : $"max(3px, {(v / Model.AxisTop * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%)";
+}

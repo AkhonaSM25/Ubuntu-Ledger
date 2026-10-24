@@ -1,0 +1,23 @@
+@model ReportsViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Report";
+    ViewData["Print"] = true;
+}
+@* Printable report; the browser's print dialog saves it as a PDF. *@
+<div class="page">
+    <div class="page__body">
+        <div class="page__inner stack" style="max-width:1040px">
+            <div class="page-head">
+                <div class="page-head__text">
+                    <partial name="_Brand" model="(true, false, false)" />
+                    <h1 class="page-title" style="margin-top:20px">@access.Circle.Name report</h1>
+                    <p class="page-sub">@Model.Range</p>
+                </div>
+                <button type="button" class="btn btn--primary btn--sm no-print" data-print>@Ui.Icon("download", 18)Save as PDF</button>
+            </div>
+            <partial name="_StatGrid" model="Model.Stats" />
+            <partial name="_Report" model="Model" />
+        </div>
+    </div>
+</div>

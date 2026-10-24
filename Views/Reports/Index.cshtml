@@ -1,0 +1,20 @@
+@model ReportsViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Reports";
+    ViewData["Nav"] = "reports";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<div class="page-head">
+    <div class="page-head__text">
+        <h1 class="page-title">Reports</h1>
+        <p class="page-sub">@(access.IsTreasurer ? $"A clear view of {access.Circle.Name}’s money." : "A clear view of your own loans.")</p>
+    </div>
+    <div class="actions">
+        <a class="btn btn--secondary btn--sm" asp-action="Export" asp-route-circleId="@circleId" asp-route-period="@Model.Period">@Ui.Icon("download", 18)CSV</a>
+        <a class="btn btn--primary btn--sm" asp-action="Print" asp-route-circleId="@circleId" asp-route-period="@Model.Period" target="_blank">@Ui.Icon("download", 18)PDF</a>
+    </div>
+</div>
+<partial name="_StatGrid" model="Model.Stats" />
+<partial name="_Report" model="Model" />
