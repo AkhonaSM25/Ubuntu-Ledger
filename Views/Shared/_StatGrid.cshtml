@@ -1,0 +1,12 @@
+@model IReadOnlyList<StatCard>
+<div class="stats">
+    @foreach (var s in Model)
+    {
+        <div class="stat@(s.Featured ? " stat--featured" : "")">
+            <span class="stat__icon">@Ui.Icon(s.Icon, 20, 1.9)</span>
+            <span class="stat__label">@s.Label</span>
+            <span class="stat__value">@s.Value</span>
+            <span class="stat__note">@s.Note</span>
+        </div>
+    }
+</div>

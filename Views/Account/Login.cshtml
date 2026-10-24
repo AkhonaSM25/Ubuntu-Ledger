@@ -1,0 +1,48 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<div class="page">
+    <div class="login">
+        <section class="login__hero geo-host">
+            @Ui.Geo(dark: true)
+            <div class="login__brand"><partial name="_Brand" model="(false, true, true)" /></div>
+            <div>
+                <h1>Every rand, accounted for. <span>Together.</span></h1>
+                <p class="login__lede">A simple, trusted ledger for your lending circle. Every loan, repayment and balance in one place.</p>
+            </div>
+            <p class="login__foot">Built for communities that grow together.</p>
+        </section>
+        <section class="login__form-wrap">
+            <form class="login__form form" method="post" asp-action="Login">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div>
+                    <p class="login__eyebrow">SAWUBONA</p>
+                    <h2 class="login__title">Welcome back</h2>
+                    <p class="page-sub" style="margin-top:8px">Sign in to see your circle’s ledger.</p>
+                </div>
+                <div asp-validation-summary="ModelOnly"></div>
+                <label class="field">
+                    Phone number
+                    <input class="input" asp-for="Phone" type="tel" inputmode="tel" placeholder="e.g. 082 123 4567" autocomplete="username" />
+                    <span asp-validation-for="Phone"></span>
+                </label>
+                <label class="field">
+                    Your PIN
+                    <input class="input" asp-for="Pin" type="password" inputmode="numeric" placeholder="4 to 6 digits" autocomplete="current-password" />
+                    <span asp-validation-for="Pin"></span>
+                </label>
+                <div class="field">
+                    <span>Try it as</span>
+                    <div class="segmented" role="group" aria-label="Demo account">
+                        <button type="button" class="seg-btn seg-btn--48" data-demo-phone="082 555 0148" aria-pressed="true">Treasurer</button>
+                        <button type="button" class="seg-btn seg-btn--48" data-demo-phone="071 445 1992" aria-pressed="false">Member</button>
+                    </div>
+                    <span class="field__help">Demo accounts. The PIN for both is 1234.</span>
+                </div>
+                <button type="submit" class="btn btn--primary" style="font-size:16px">Sign in@(Ui.Icon("chevronRight", 18, 2.2))</button>
+                <p class="login__note">@Ui.Icon("shield", 18, 1.9)Only members of your circle can see these records.</p>
+            </form>
+        </section>
+    </div>
+</div>

@@ -1,0 +1,18 @@
+@{
+    Layout = "_Layout";
+}
+@* Full-page layout for screens outside any circle (choosing or starting one). *@
+<div class="page">
+    <header class="topbar">
+        <partial name="_Brand" model="(true, false, false)" />
+        <form method="post" asp-controller="Account" asp-action="Logout">
+            <button type="submit" class="signout" style="min-height:44px;padding:0 12px">@Ui.Icon("signout", 20, 1.9)Sign out</button>
+        </form>
+    </header>
+    <div class="page__body">
+        <div class="page__inner stack" style="max-width:@(ViewData["MaxWidth"] ?? 760)px">
+            @RenderBody()
+        </div>
+    </div>
+</div>
+@section Scripts { @await RenderSectionAsync("Scripts", required: false) }

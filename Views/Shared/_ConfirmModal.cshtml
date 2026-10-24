@@ -1,0 +1,20 @@
+@model (string Title, string Text, IReadOnlyList<ConfirmLine> Lines, string OkLabel)
+@* Shown after "Review": the form's values are already posted, so confirming re-submits them with command=confirm. *@
+<div class="overlay" data-dialog>
+    <div role="dialog" aria-modal="true" aria-labelledby="ul-modal-title" class="dialog">
+        <div>
+            <h2 id="ul-modal-title" class="dialog__title">@Model.Title</h2>
+            <p class="page-sub">@Model.Text</p>
+        </div>
+        <div class="kv">
+            @foreach (var l in Model.Lines)
+            {
+                <div class="kv__row@(l.Strong ? " kv__row--strong" : "")"><span>@l.Label</span><span>@l.Value</span></div>
+            }
+        </div>
+        <div class="dialog__actions">
+            <button type="submit" name="command" value="edit" class="btn btn--secondary" formnovalidate data-close-dialog>Go back</button>
+            <button type="submit" name="command" value="confirm" class="btn btn--primary" autofocus>@Model.OkLabel</button>
+        </div>
+    </div>
+</div>

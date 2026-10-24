@@ -1,0 +1,13 @@
+@model (string Title, string? Text, string Variant)
+@{
+    var pattern = Model.Variant != "plain";
+    var hero = Model.Variant == "hero";
+}
+<div class="empty@(Model.Variant != "default" ? " empty--" + Model.Variant : "")@(pattern ? " geo-host" : "")">
+    @if (pattern) { @Ui.Geo() }
+    <p class="empty__title" style="@(hero ? "font-size:18px;font-weight:800" : null)">@Model.Title</p>
+    @if (Model.Text is not null)
+    {
+        <p class="empty__text" style="@(hero ? "font-size:15px;margin-top:6px" : null)">@Model.Text</p>
+    }
+</div>

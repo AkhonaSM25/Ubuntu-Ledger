@@ -1,0 +1,73 @@
+@{
+    Layout = "_Layout";
+    var access = (CircleAccess)ViewData["Access"]!;
+    var circleId = access.Circle.Id;
+    var active = ViewData["Nav"] as string ?? "dashboard";
+    var me = access.Me;
+    var role = access.IsTreasurer ? "Circle treasurer" : "Member";
+    var nav = new List<(string Key, string Label, string Icon, string Controller)> { ("dashboard", "Home", "home", "Dashboard") };
+    if (access.IsTreasurer) { nav.Add(("members", "Members", "users", "Members")); }
+    nav.Add(("loans", "Loans", "wallet", "Loans"));
+    nav.Add(("reports", "Reports", "chart", "Reports"));
+}
+<div class="app">
+    @* desktop sidebar *@
+    <aside class="sidebar only-desk">
+        <partial name="_Brand" model="(false, false, true)" />
+        <a class="circle-switch" asp-controller="Circles" asp-action="Index" aria-label="Switch circle">
+            <span class="circle-switch__text">
+                <span class="muted" style="font-size:12px">Circle</span>
+                <span class="ellipsis" style="font-weight:700">@access.Circle.Name</span>
+            </span>
+            <span class="muted">@Ui.Icon("updown", 18)</span>
+        </a>
+        <nav aria-label="Main" class="side-nav">
+            @foreach (var n in nav)
+            {
+                <a class="side-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 22, 1.9)@n.Label</a>
+            }
+        </nav>
+        <div class="sidebar__foot">
+            <div class="user-card">
+                @Ui.Avatar(me.Initials, "44", solid: true)
+                <span style="display:flex;flex-direction:column;min-width:0">
+                    <span class="ellipsis" style="font-weight:700">@me.Name</span>
+                    <span class="small muted">@role</span>
+                </span>
+            </div>
+            <form method="post" asp-controller="Account" asp-action="Logout">
+                <button type="submit" class="signout">@Ui.Icon("signout", 20, 1.9)Sign out</button>
+            </form>
+        </div>
+    </aside>
+
+    @* phone top bar and circle switcher *@
+    <header class="topbar only-mob">
+        <partial name="_Brand" model="(true, false, true)" />
+        <div style="display:flex;align-items:center;gap:4px">
+            @Ui.Avatar(me.Initials, "40", solid: true)
+            <form method="post" asp-controller="Account" asp-action="Logout">
+                <button type="submit" class="icon-btn" aria-label="Sign out">@Ui.Icon("signout", 22, 1.9)</button>
+            </form>
+        </div>
+    </header>
+    <a class="circle-bar only-mob" asp-controller="Circles" asp-action="Index" aria-label="Switch circle">
+        <span class="ellipsis">@access.Circle.Name · @role</span>
+        @Ui.Icon("updown", 18)
+    </a>
+
+    <main class="main">
+        <div class="main__inner stack">
+            @RenderBody()
+        </div>
+    </main>
+
+    @* phone bottom navigation *@
+    <nav aria-label="Main" class="bottom-nav only-mob" style="grid-template-columns:repeat(@nav.Count,1fr)">
+        @foreach (var n in nav)
+        {
+            <a class="bottom-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 24, 1.9)@n.Label</a>
+        }
+    </nav>
+</div>
+@section Scripts { @await RenderSectionAsync("Scripts", required: false) }

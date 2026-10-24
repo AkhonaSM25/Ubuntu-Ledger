@@ -1,0 +1,21 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Something went wrong";
+    var notFound = (int)(ViewData["Code"] ?? 500) == 404;
+}
+<div class="page">
+    <div class="page__body">
+        <div class="page__inner stack" style="max-width:560px">
+            <partial name="_Brand" model="(false, false, true)" />
+            <div>
+                <h1 class="page-title">@(notFound ? "We could not find that page" : "Something went wrong")</h1>
+                <p class="page-sub">@(notFound ? "It may have moved, or it belongs to a circle you are not part of." : "Please try again. If it keeps happening, tell your treasurer.")</p>
+            </div>
+            <a class="btn btn--primary" href="/" style="align-self:flex-start">Go to your circles</a>
+            @if (Model.ShowRequestId)
+            {
+                <p class="small muted">Request ID: <code>@Model.RequestId</code></p>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,11 @@
+@model (bool Small, bool Glass, bool Tagline)
+<div class="brand@(Model.Small ? " brand--small" : "")">
+    <span class="brand__mark@(Model.Small ? " brand__mark--40" : "")@(Model.Glass ? " brand__mark--glass" : "")">@Ui.LogoMark(Model.Small ? 24 : 26)</span>
+    <span class="brand__text">
+        <span class="brand__name">Ubuntu Ledger</span>
+        @if (Model.Tagline)
+        {
+            <span class="brand__tag">Lending circles</span>
+        }
+    </span>
+</div>
