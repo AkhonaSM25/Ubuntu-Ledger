@@ -1,4 +1,4 @@
-# Ubuntu Ledger
+﻿# Ubuntu Ledger
 
 A digital record book for stokvel-style lending circles. A circle's treasurer records loans and repayments, and every member can see their own balances, so there is one trusted record and fewer disputes.
 
@@ -25,7 +25,7 @@ Demo sign-in (PIN 1234 for both):
 - Treasurer: Zanele Maseko, 082 555 0148
 - Member: Sipho Dlamini, 071 445 1992
 
-All demo people and numbers are invented. Demo data loads only when `Seed:DemoData` is `true` (on in Development).
+All demo people and numbers are invented. Demo data loads only when `Seed:DemoData` is `true`.
 
 ## Project structure
 - `Models/` entities and formatting helpers
