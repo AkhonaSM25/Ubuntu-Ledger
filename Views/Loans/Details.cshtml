@@ -29,9 +29,9 @@
         <div class="title-row"><h1 class="page-title">@loan.Borrower.Name</h1>@Ui.Chip(s.Status)</div>
         <p class="page-sub">Issued @Format.Date(loan.StartDate) · @(loan.RatePercent.ToString("0.##"))% @interestText interest · @Format.Plural(loan.Term, "monthly payment")</p>
     </div>
-    @if (access.IsTreasurer && s.IsOpen)
+    @if (s.IsOpen && s.Available > 0)
     {
-        <a class="btn btn--gold stretch-m" asp-controller="Repayments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@loan.Id">@Ui.Icon("down", 20, 2.1)Record repayment</a>
+        <a class="btn btn--gold stretch-m" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@loan.Id">@Ui.Icon("down", 20, 2.1)@(loan.BorrowerId == access.Me.Id ? "I made a payment" : "I received a payment")</a>
     }
 </div>
 <section class="card card--pad form">
@@ -50,6 +50,10 @@
         </div>
     </div>
     <div class="notice notice--@tone">@Ui.Icon(icon)@noticeText</div>
+    @if (s.Pending > 0)
+    {
+        <a class="notice notice--soon" asp-controller="Payments" asp-action="Index" asp-route-circleId="@circleId" style="text-decoration:none">@Ui.Icon("clock")<span>@Format.Zar(s.Pending) is waiting for confirmation and is not counted yet. Review it →</span></a>
+    }
 </section>
 <section class="card">
     <div class="card__head">

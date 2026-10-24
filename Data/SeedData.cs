@@ -76,6 +76,20 @@ public static class SeedData
             L("UL-0107", bongani, 8000, 10, simple, "2026-09-17", 8),
             L("UL-0108", sipho, 3000, 10, simple, "2026-09-20", 3),
         ];
+
+        // Two payments mid-confirmation, so the demo shows both directions of the two-party flow:
+        // Sipho says he paid UL-0108 (Zanele has to confirm), and Zanele says she received UL-0103's last instalment (Sipho has to confirm).
+        loans[7].Repayments.Add(new Repayment
+        {
+            Date = DateOnly.Parse("2026-10-14"), Amount = 1100, Method = eft, Reference = "SIPHO OCT",
+            SubmittedBy = PaymentSide.Payer, Status = PaymentStatus.Pending, RecordedAt = DateTime.Parse("2026-10-14"),
+        });
+        loans[2].Repayments.Add(new Repayment
+        {
+            Date = DateOnly.Parse("2026-10-14"), Amount = 1100, Method = cash, Note = "Final instalment",
+            SubmittedBy = PaymentSide.Collector, Status = PaymentStatus.Pending, RecordedAt = DateTime.Parse("2026-10-14"),
+        });
+
         db.Loans.AddRange(loans);
         await db.SaveChangesAsync();
 
@@ -83,7 +97,7 @@ public static class SeedData
         foreach (var loan in loans)
         {
             loan.CreatedById = zanele.Id;
-            foreach (var r in loan.Repayments) r.RecordedById = zanele.Id;
+            foreach (var r in loan.Repayments) r.RecordedById = r.SubmittedBy == PaymentSide.Payer ? sipho.Id : zanele.Id;
         }
         await db.SaveChangesAsync();
     }

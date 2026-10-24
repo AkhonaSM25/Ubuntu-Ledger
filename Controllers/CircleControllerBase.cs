@@ -30,6 +30,8 @@ public abstract class CircleControllerBase(CircleAccessService accessService) : 
         }
         Access = access;
         ViewData["Access"] = access;
+        // Powers the Confirmations badge and the balance card in the sidebar.
+        ViewData["Snapshot"] = await context.HttpContext.RequestServices.GetRequiredService<LoanService>().SnapshotAsync(access);
         await next();
     }
 

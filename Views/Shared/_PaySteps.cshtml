@@ -1,0 +1,15 @@
+@model (int Done, bool Bad)
+@* Submitted -> other person -> confirmed by both. Done = how many steps are complete (1 to 3). *@
+@{
+    string[] labels = ["Submitted", "Other person", "Confirmed by both"];
+}
+<ol class="pay-steps" aria-label="Confirmation progress">
+    @for (var i = 0; i < labels.Length; i++)
+    {
+        var state = i < Model.Done ? "done" : i == Model.Done ? (Model.Bad ? "bad" : "current") : "todo";
+        <li class="pay-step pay-step--@state">
+            <span class="pay-step__dot">@(state == "done" ? Ui.Icon("check", 14, 3) : state == "bad" ? Ui.Icon("alert", 14, 2.6) : new HtmlString((i + 1).ToString()))</span>
+            <span class="pay-step__label">@labels[i]</span>
+        </li>
+    }
+</ol>

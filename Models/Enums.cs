@@ -35,3 +35,21 @@ public enum LoanStatus
     DueSoon = 2,
     Overdue = 3
 }
+
+// Where a payment is in the two-party confirmation flow. Only Confirmed payments reduce a loan's balance.
+// Confirmed is deliberately 0 so every repayment recorded before confirmation existed counts as confirmed.
+public enum PaymentStatus
+{
+    Confirmed = 0,
+    Pending = 1,
+    Disputed = 2,
+    Cancelled = 3
+}
+
+// Who submitted a payment. The other side has to confirm it.
+// Collector is 0 so older repayments, which the treasurer recorded, keep their meaning.
+public enum PaymentSide
+{
+    Collector = 0,
+    Payer = 1
+}

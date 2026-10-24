@@ -86,6 +86,38 @@ public class LoanCalculatorTests
     }
 
     [Fact]
+    public void Only_confirmed_payments_reduce_the_balance()
+    {
+        var loan = NewLoan(6000, 10, InterestType.Simple, "2026-05-10", 6, 1100);
+        var date = new DateOnly(2026, 7, 10);
+        loan.Repayments.Add(new Repayment { Amount = 1100, Date = date, Status = PaymentStatus.Pending });
+        loan.Repayments.Add(new Repayment { Amount = 500, Date = date, Status = PaymentStatus.Disputed });
+        loan.Repayments.Add(new Repayment { Amount = 300, Date = date, Status = PaymentStatus.Cancelled });
+
+        var s = LoanCalculator.Summarize(loan, Today);
+
+        Assert.Equal(1100m, s.Paid);
+        Assert.Equal(5500m, s.Balance);
+        Assert.Equal(1100m, s.Pending);      // only pending counts as "waiting"; disputed and cancelled do not
+        Assert.Equal(4400m, s.Available);
+        Assert.Single(s.Confirmed);
+    }
+
+    [Fact]
+    public void Payment_validation_counts_what_is_already_pending()
+    {
+        var loan = NewLoan(1000, 0, InterestType.Simple, "2026-09-01", 2);
+        loan.Repayments.Add(new Repayment { Amount = 900, Date = new DateOnly(2026, 9, 5), Status = PaymentStatus.Pending });
+        var s = LoanCalculator.Summarize(loan, Today);
+
+        Assert.Null(LoanService.ValidatePayment(s, 100, Today, Today, null));
+        Assert.NotNull(LoanService.ValidatePayment(s, 100.01m, Today, Today, null));
+        Assert.NotNull(LoanService.ValidatePayment(s, 50, Today.AddDays(1), Today, null));
+        Assert.NotNull(LoanService.ValidatePayment(s, 50, new DateOnly(2026, 8, 31), Today, null));
+        Assert.NotNull(LoanService.ValidatePayment(s, 50, Today, Today, new string('x', 61)));
+    }
+
+    [Fact]
     public void Rand_amounts_use_non_breaking_thousand_separators()
     {
         Assert.Equal("R 12 500.00", Format.Zar(12500));

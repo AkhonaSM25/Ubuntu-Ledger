@@ -1,0 +1,98 @@
+@model PaymentDetailViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var r = Model.Row;
+    var p = r.Payment;
+    ViewData["Title"] = "Payment review";
+    ViewData["Nav"] = "payments";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var done = p.Status switch { PaymentStatus.Confirmed => 3, PaymentStatus.Cancelled => 1, _ => 1 };
+    var isImage = p.ProofContentType?.StartsWith("image/") == true;
+    var statusText = p.Status switch
+    {
+        PaymentStatus.Confirmed => "Confirmed by both. It counts toward the balance.",
+        PaymentStatus.Cancelled => "Cancelled. It does not count.",
+        PaymentStatus.Disputed => "Disputed. The balance has not changed.",
+        _ => "Waiting for confirmation. The balance has not changed.",
+    };
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Confirmations</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">Loan @r.Loan.Reference · @r.Loan.Borrower.Name</p>
+        <div class="title-row"><h1 class="page-title">@r.Headline</h1>@Ui.Chip(r.Chip, r.ChipLabel)</div>
+        <p class="page-sub">@statusText</p>
+    </div>
+</div>
+<div class="split">
+    <section class="card card--pad form split__main">
+        <div class="kv">
+            <div class="kv__row"><span>Amount</span><span>@Format.Zar(p.Amount)</span></div>
+            <div class="kv__row"><span>Method</span><span>@(p.Method == PaymentMethod.EFT ? "EFT / Bank transfer" : "Cash")</span></div>
+            <div class="kv__row"><span>Payment date</span><span>@Format.Date(p.Date)</span></div>
+            <div class="kv__row"><span>Reference</span><span>@(string.IsNullOrEmpty(p.Reference) ? "None" : p.Reference)</span></div>
+            @if (Model.Summary is { } figures)
+            {
+                <div class="kv__row"><span>Balance now</span><span>@Format.Zar(figures.Balance)</span></div>
+                @if (p.Status != PaymentStatus.Confirmed && p.Status != PaymentStatus.Cancelled)
+                {
+                    <div class="kv__row kv__row--strong"><span>Balance if confirmed</span><span>@Format.Zar(Math.Max(0, figures.Balance - p.Amount))</span></div>
+                }
+            }
+        </div>
+        @if (p.Status == PaymentStatus.Disputed && !string.IsNullOrEmpty(p.DisputeReason))
+        {
+            <div class="notice notice--overdue">@Ui.Icon("alert")<span>Disputed: @p.DisputeReason</span></div>
+        }
+        <div class="field">
+            <span>Proof of payment</span>
+            @if (p.ProofPath is null)
+            {
+                <p class="small muted" style="margin:0">No proof was attached.</p>
+            }
+            else
+            {
+                if (isImage)
+                {
+                    <img class="proof-img" src="@Url.Action("Proof", new { circleId, id = p.Id })" alt="Proof of payment" />
+                }
+                <a class="btn btn--secondary btn--xs" href="@Url.Action("Proof", new { circleId, id = p.Id })" target="_blank" rel="noopener">@Ui.Icon("download", 18)Open @p.ProofName</a>
+            }
+        </div>
+        @if (Model.CanConfirm || Model.CanDispute || Model.CanCancel)
+        {
+            <div class="form-actions" style="justify-content:flex-start">
+                @if (Model.CanConfirm)
+                {
+                    <form method="post" asp-action="Confirm" asp-route-circleId="@circleId" asp-route-id="@p.Id">
+                        <button type="submit" class="btn btn--primary">@Ui.Icon("check", 20, 2.4)@(p.SubmittedBy != PaymentSide.Payer ? "Confirm I paid this" : Model.Summary is null ? "Confirm this payment was made" : "Confirm I received this")</button>
+                    </form>
+                }
+                @if (Model.CanCancel)
+                {
+                    <form method="post" asp-action="Cancel" asp-route-circleId="@circleId" asp-route-id="@p.Id">
+                        <button type="submit" class="btn btn--secondary">Cancel this payment</button>
+                    </form>
+                }
+            </div>
+        }
+        @if (Model.CanDispute)
+        {
+            <form method="post" asp-action="Dispute" asp-route-circleId="@circleId" asp-route-id="@p.Id" class="form divider-top">
+                <label class="field">
+                    <span>Something does not match? <span class="field__opt">Say what is wrong</span></span>
+                    <input class="input" name="reason" maxlength="300" required placeholder="e.g. I only received R 400.00" />
+                </label>
+                <div><button type="submit" class="btn btn--danger">Dispute this payment</button></div>
+            </form>
+        }
+    </section>
+    <aside class="card split__side preview">
+        <div>
+            <h2 class="section-title">Two-party confirmation</h2>
+            <p class="small muted" style="margin-top:4px">Submitted @Format.Date(DateOnly.FromDateTime(p.RecordedAt)) by @(p.SubmittedBy == PaymentSide.Payer ? "the borrower" : "the treasurer").</p>
+        </div>
+        <partial name="_PaySteps" model="(done, p.Status == PaymentStatus.Disputed)" />
+    </aside>
+</div>

@@ -42,6 +42,31 @@ public class Repayment
     [StringLength(200)]
     public string? Note { get; set; }
 
+    // Who submitted the payment and when. Submitting is the first of the two confirmations.
     public int RecordedById { get; set; }
     public DateTime RecordedAt { get; set; }
+    public PaymentSide SubmittedBy { get; set; }
+
+    // Only Confirmed payments count toward the balance.
+    public PaymentStatus Status { get; set; }
+
+    [StringLength(60)]
+    public string? Reference { get; set; }
+
+    // Proof of payment: a file kept outside wwwroot and served only to people who can see the loan.
+    [StringLength(100)]
+    public string? ProofPath { get; set; }
+
+    [StringLength(100)]
+    public string? ProofName { get; set; }
+
+    [StringLength(50)]
+    public string? ProofContentType { get; set; }
+
+    // The other person's answer: who confirmed, disputed or cancelled it, and when.
+    public int? ReviewedById { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+
+    [StringLength(300)]
+    public string? DisputeReason { get; set; }
 }

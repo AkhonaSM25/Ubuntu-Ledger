@@ -44,7 +44,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
     {
         if (!Access.IsTreasurer) return NotFound();
         var borrowers = await loans.BorrowersAsync(Access.Circle.Id);
-        if (borrowers.Count == 0)
+        if (!borrowers.Any(b => b.Id != Access.Me.Id))
         {
             Toast("Invite someone first. Loans can be recorded once they accept.");
             return RedirectToAction("Invite", "Members", new { circleId = Access.Circle.Id });
@@ -91,7 +91,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         run += s.Interest;
         var how = l.InterestType == InterestType.Simple ? $"{l.RatePercent:0.##}% simple interest" : $"{l.RatePercent:0.##}% a month for {Format.Plural(l.Term, "month")}";
         rows.Add(new(l.StartDate, "Interest added", how, s.Interest, false, run));
-        foreach (var r in l.Repayments.OrderBy(r => r.Date).ThenBy(r => r.Id))
+        foreach (var r in s.Confirmed.OrderBy(r => r.Date).ThenBy(r => r.Id))
         {
             run -= r.Amount;
             rows.Add(new(r.Date, "Repayment", r.Method + (string.IsNullOrEmpty(r.Note) ? "" : " · " + r.Note), r.Amount, true, run));

@@ -36,8 +36,8 @@ public class ReportsController(CircleAccessService access, LoanService loans, Le
             bool In(DateOnly d) => d.Year == m.Year && d.Month == m.Month;
             return new ReportMonth(m,
                 visible.Where(l => In(l.Loan.StartDate)).Sum(l => l.Loan.Principal),
-                visible.Sum(l => l.Loan.Repayments.Where(r => In(r.Date)).Sum(r => r.Amount)),
-                visible.Sum(l => l.Loan.Repayments.Where(r => In(r.Date)).Sum(r => LoanCalculator.InterestShare(l, r.Amount))));
+                visible.Sum(l => l.Confirmed.Where(r => In(r.Date)).Sum(r => r.Amount)),
+                visible.Sum(l => l.Confirmed.Where(r => In(r.Date)).Sum(r => LoanCalculator.InterestShare(l, r.Amount))));
         }).ToList();
 
         // Y axis in whole thousands with four gridlines.

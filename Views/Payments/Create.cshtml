@@ -1,0 +1,104 @@
+@model PaymentFormViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var sel = Model.Selected!;
+    // Paying your own loan makes you the payer, whatever your role. Anyone else's loan, you are recording what you received.
+    var payer = sel.Loan.BorrowerId == access.Me.Id;
+    ViewData["Title"] = payer ? "I made a payment" : "Record received payment";
+    ViewData["Nav"] = "payments";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var other = !payer ? "member" : access.Me.Id == access.TreasurerId ? "other member" : "treasurer";
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Cancel and go back</a>
+<div>
+    <p class="eyebrow">@(payer ? "Payer submission" : "Collector submission")</p>
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <p class="page-sub">@(payer ? $"Tell the {other} what you paid. They must confirm it." : "Record money you received. The member must confirm it.")</p>
+</div>
+<form method="post" enctype="multipart/form-data" asp-action="Create" asp-route-circleId="@circleId" class="split">
+    <div class="card card--pad form split__main">
+        @* Enter key submits the first button in the form, so make that "send" rather than a loan choice. *@
+        <button type="submit" name="command" value="send" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+        <input type="hidden" asp-for="LoanId" />
+        @if (Model.Error is not null)
+        {
+            <div class="notice notice--overdue" role="alert">@Ui.Icon("alert")<span>@Model.Error</span></div>
+        }
+        <div class="field">
+            <span id="pay-loan-label">Select loan</span>
+            <div class="loan-pick-list" role="group" aria-labelledby="pay-loan-label">
+                @foreach (var l in Model.OpenLoans)
+                {
+                    <button type="submit" name="command" value="pick-@l.Loan.Id" formnovalidate class="loan-pick" aria-pressed="@(l.Loan.Id == sel.Loan.Id ? "true" : "false")">
+                        @Ui.Avatar(l.Loan.Borrower.Initials, "40")
+                        <span class="row__main" style="gap:0">
+                            <span class="row__title ellipsis">@(l.Loan.BorrowerId == access.Me.Id ? "My loan " + l.Loan.Reference : l.Loan.Borrower.Name)</span>
+                            <span class="row__sub" style="font-weight:400">@(l.Loan.BorrowerId == access.Me.Id ? "Started " + Format.Date(l.Loan.StartDate) : "Loan " + l.Loan.Reference)</span>
+                        </span>
+                        <span class="row__end" style="gap:0"><span class="row__amt">@Format.Zar(l.Available)</span><span class="row__caption" style="font-weight:400">to pay</span></span>
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="field">
+            <label for="Amount">@(payer ? "Amount I paid" : "Amount received")</label>
+            <span class="affix affix--lg@(Model.Error is null ? "" : " affix--error")">
+                <span class="affix__mark">R</span>
+                <input asp-for="Amount" type="number" inputmode="decimal" min="0" step="0.01" />
+            </span>
+            <div class="filter-chips">
+                <button type="button" class="quick-chip" onclick="document.getElementById('Amount').value='@Format.Input(Math.Min(sel.Instalment, sel.Available))'">Instalment @Format.Zar(Math.Min(sel.Instalment, sel.Available))</button>
+                <button type="button" class="quick-chip" onclick="document.getElementById('Amount').value='@Format.Input(sel.Available)'">Everything left @Format.Zar(sel.Available)</button>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label class="field">
+                Payment date
+                <input class="input" asp-for="Date" type="date" />
+            </label>
+            <fieldset class="field" style="border:0;padding:0;margin:0">
+                <legend style="padding:0;margin-bottom:8px">Method</legend>
+                <div class="segmented">
+                    @foreach (var m in new[] { PaymentMethod.EFT, PaymentMethod.Cash })
+                    {
+                        <label class="seg-btn seg-radio"><input type="radio" name="Method" value="@m" checked="@(Model.Method == m)" class="sr-only" />@(m == PaymentMethod.EFT ? "EFT / Bank transfer" : "Cash")</label>
+                    }
+                </div>
+            </fieldset>
+        </div>
+        <label class="field">
+            <span>Reference number <span class="field__opt">(optional)</span></span>
+            <input class="input" asp-for="Reference" maxlength="60" placeholder="e.g. THANDI JUN25" />
+            <span asp-validation-for="Reference"></span>
+        </label>
+        <div class="field">
+            <label for="Proof">Proof of payment <span class="field__opt">(optional)</span></label>
+            <label class="dropzone" for="Proof">
+                @Ui.Icon("download", 22, 1.9)
+                <span class="dropzone__title">Upload photo or PDF</span>
+                <span class="dropzone__text">JPG, PNG or PDF, up to 5 MB. Clear proof helps the @other confirm faster.</span>
+                <input id="Proof" name="Proof" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" />
+            </label>
+            @if (Model.Error is not null)
+            {
+                <span class="field__help">If you chose a proof file, choose it again before sending.</span>
+            }
+        </div>
+        <div class="form-actions">
+            <a class="btn btn--secondary" asp-action="Index" asp-route-circleId="@circleId">Cancel</a>
+            <button type="submit" name="command" value="send" class="btn btn--primary">Send for confirmation</button>
+        </div>
+    </div>
+    <aside class="card split__side preview">
+        <div>
+            <h2 class="section-title">Two-party confirmation</h2>
+            <p class="small muted" style="margin-top:4px">A payment only counts after both the payer and the collector agree on it.</p>
+        </div>
+        <partial name="_PaySteps" model="(1, false)" />
+        <div class="notice notice--soon" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <strong>Balance stays unchanged</strong>
+            <span style="font-weight:500">@Format.Zar(Model.Amount ?? 0) will show as pending until the @other confirms it.</span>
+        </div>
+    </aside>
+</form>

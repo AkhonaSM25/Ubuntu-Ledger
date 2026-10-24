@@ -10,6 +10,9 @@ public class DashboardViewModel
     public required IReadOnlyList<LoanSummary> DueSoon { get; init; }
     public required bool HasLoans { get; init; }
     public required bool HasMembers { get; init; }
+    // The signed-in person's own loan with something left to pay (earliest due first), for the "I made a payment" button.
+    public int? OwnLoanId { get; init; }
+    public required IReadOnlyList<PaymentRow> Awaiting { get; init; }
     public required DateOnly Today { get; init; }
 }
 
@@ -65,22 +68,6 @@ public class NewLoanViewModel
     public decimal Instalment => LoanCalculator.InstalmentFor(Total, Term);
     public IReadOnlyList<DateOnly> DueDates => LoanCalculator.DueDatesFor(StartDate, Term);
     public string BorrowerName => Borrowers.FirstOrDefault(b => b.Id == BorrowerId)?.Name ?? "";
-}
-
-public class RepaymentViewModel
-{
-    public int LoanId { get; set; }
-    public decimal? Amount { get; set; }
-    public DateOnly Date { get; set; }
-    public PaymentMethod Method { get; set; } = PaymentMethod.EFT;
-    public string? Note { get; set; }
-
-    public IReadOnlyList<LoanSummary> OpenLoans { get; set; } = [];
-    public LoanSummary? Selected { get; set; }
-    public string? Error { get; set; }
-    public bool Confirming { get; set; }
-
-    public decimal NewBalance => Selected is null ? 0 : Error is null ? Math.Max(0, Selected.Balance - (Amount ?? 0)) : Selected.Balance;
 }
 
 public record ReportMonth(DateOnly Month, decimal Lent, decimal Repaid, decimal Interest);

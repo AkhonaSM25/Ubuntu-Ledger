@@ -5,7 +5,8 @@
     var active = ViewData["Nav"] as string ?? "dashboard";
     var me = access.Me;
     var role = access.IsTreasurer ? "Circle treasurer" : "Member";
-    var nav = new List<(string Key, string Label, string Icon, string Controller)> { ("dashboard", "Home", "home", "Dashboard") };
+    var snapshot = ViewData["Snapshot"] as PaymentSnapshot;
+    var nav = new List<(string Key, string Label, string Icon, string Controller)> { ("dashboard", "Home", "home", "Dashboard"), ("payments", "Confirmations", "check", "Payments") };
     if (access.IsTreasurer) { nav.Add(("members", "Members", "users", "Members")); }
     nav.Add(("loans", "Loans", "wallet", "Loans"));
     nav.Add(("reports", "Reports", "chart", "Reports"));
@@ -24,10 +25,18 @@
         <nav aria-label="Main" class="side-nav">
             @foreach (var n in nav)
             {
-                <a class="side-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 22, 1.9)@n.Label</a>
+                <a class="side-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 22, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> }</a>
             }
         </nav>
         <div class="sidebar__foot">
+            @if (snapshot is not null)
+            {
+                <div class="balance-card">
+                    <span class="eyebrow" style="margin:0">@(access.IsTreasurer ? "Owed to the circle" : "You still owe")</span>
+                    <span class="balance-card__value">@Format.Zar(snapshot.Outstanding)</span>
+                    @if (snapshot.Pending > 0) { <span class="small muted">@Format.Zar(snapshot.Pending) pending</span> }
+                </div>
+            }
             <div class="user-card">
                 @Ui.Avatar(me.Initials, "44", solid: true)
                 <span style="display:flex;flex-direction:column;min-width:0">
@@ -66,7 +75,7 @@
     <nav aria-label="Main" class="bottom-nav only-mob" style="grid-template-columns:repeat(@nav.Count,1fr)">
         @foreach (var n in nav)
         {
-            <a class="bottom-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 24, 1.9)@n.Label</a>
+            <a class="bottom-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 24, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> }</a>
         }
     </nav>
 </div>

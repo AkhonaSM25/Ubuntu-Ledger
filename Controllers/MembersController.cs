@@ -44,7 +44,7 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
     {
         if (!Access.IsTreasurer) return NotFound();
         var membership = await db.Memberships.Include(m => m.Person)
-            .FirstOrDefaultAsync(m => m.CircleId == Access.Circle.Id && m.PersonId == personId && m.Role == CircleRole.Member);
+            .FirstOrDefaultAsync(m => m.CircleId == Access.Circle.Id && m.PersonId == personId);
         if (membership is null) return NotFound();
 
         var summary = MemberSummary.From(membership.Person, await loans.VisibleAsync(Access));
@@ -53,14 +53,14 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         [
             new("Balance owing", Format.Zar(summary.Owed), Format.Plural(summary.Active.Count, "active loan"), "wallet", Featured: true),
             new("Total borrowed", Format.Zar(summary.Loans.Sum(l => l.Loan.Principal)), "Across " + Format.Plural(summary.Loans.Count, "loan"), "coin"),
-            new("Total repaid", Format.Zar(summary.Loans.Sum(l => l.Paid)), Format.Plural(summary.Loans.Sum(l => l.Loan.Repayments.Count), "payment"), "down"),
+            new("Total repaid", Format.Zar(summary.Loans.Sum(l => l.Paid)), Format.Plural(summary.Loans.Sum(l => l.Confirmed.Count()), "payment"), "down"),
             new("Next payment", nextDue is { } d ? Format.Date(d) : "None", nextDue is null ? "All loans paid" : "Earliest due date", "cal"),
         ];
 
         // Every loan (principal plus interest) and payment in date order, with the running balance owed after each.
         var events = summary.Loans
             .Select(l => (Date: l.Loan.StartDate, Order: 0, Pay: false, Amount: l.Total, Title: "Loan of " + Format.Zar(l.Loan.Principal), Sub: l.Loan.Reference + " · interest added"))
-            .Concat(summary.Loans.SelectMany(l => l.Loan.Repayments.Select(r =>
+            .Concat(summary.Loans.SelectMany(l => l.Confirmed.Select(r =>
                 (Date: r.Date, Order: 1, Pay: true, Amount: -r.Amount, Title: "Repayment received", Sub: l.Loan.Reference + " · " + r.Method))))
             .OrderBy(e => e.Date).ThenBy(e => e.Order)
             .ToList();

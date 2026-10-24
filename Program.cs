@@ -1,4 +1,4 @@
-﻿using System.Threading.RateLimiting;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +49,7 @@ builder.Services.AddSingleton<LedgerClock>();
 builder.Services.AddScoped<CircleAccessService>();
 builder.Services.AddScoped<CircleService>();
 builder.Services.AddScoped<LoanService>();
+builder.Services.AddSingleton<ProofStore>();
 
 var app = builder.Build();
 

@@ -39,9 +39,9 @@ public static class Ui
         $"stroke-width=\"{stroke.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"flex:0 0 auto\"><path d=\"{Icons[name]}\"/></svg>");
 
     // Colour never works alone: every chip carries an icon and a word.
-    public static IHtmlContent Chip(string kind)
+    public static IHtmlContent Chip(string kind, string? label = null)
     {
-        var (label, icon) = kind switch
+        var (defaultLabel, icon) = kind switch
         {
             "paid" => ("Paid", "check"),
             "ok" => ("Up to date", "check"),
@@ -49,9 +49,12 @@ public static class Ui
             "overdue" => ("Overdue", "alert"),
             "invited" => ("Invited", "mail"),
             "treasurer" => ("Treasurer", "shield"),
+            "awaiting" => ("Awaiting you", "clock"),
+            "waiting" => ("Waiting", "clock"),
+            "disputed" => ("Disputed", "alert"),
             _ => ("Member", "user"),
         };
-        return new HtmlString($"<span class=\"chip chip--{kind}\">{Html(Icon(icon, 14, 2.4))}{label}</span>");
+        return new HtmlString($"<span class=\"chip chip--{kind}\">{Html(Icon(icon, 14, 2.4))}{WebUtility.HtmlEncode(label ?? defaultLabel)}</span>");
     }
 
     public static IHtmlContent Chip(LoanStatus status) => Chip(StatusKey(status));

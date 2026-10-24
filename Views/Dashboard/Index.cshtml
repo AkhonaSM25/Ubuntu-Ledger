@@ -14,16 +14,51 @@
         <h1 class="page-title">@greeting, @access.Me.FirstName</h1>
         <p class="page-sub">@(access.IsTreasurer ? $"Here is how {access.Circle.Name} is doing today." : "Here is what you owe and what you have paid.")</p>
     </div>
-    @if (access.IsTreasurer && Model.HasLoans)
+    @if ((access.IsTreasurer && Model.HasLoans) || Model.OwnLoanId is not null)
     {
         <div class="actions">
-            <a class="btn btn--gold" asp-controller="Repayments" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("down", 20, 2.1)Record repayment</a>
-            <a class="btn btn--primary" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)New loan</a>
+            @if (access.IsTreasurer && Model.HasLoans)
+            {
+                <a class="btn btn--gold" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("down", 20, 2.1)I received a payment</a>
+            }
+            @if (Model.OwnLoanId is { } ownLoan)
+            {
+                <a class="btn @(access.IsTreasurer ? "btn--secondary" : "btn--gold")" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@ownLoan">@Ui.Icon("down", 20, 2.1)I made a payment</a>
+            }
+            @if (access.IsTreasurer && Model.HasLoans)
+            {
+                <a class="btn btn--primary" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)New loan</a>
+            }
         </div>
     }
 </div>
 
 <partial name="_StatGrid" model="Model.Stats" />
+
+@if (Model.Awaiting.Count > 0)
+{
+    <section class="card">
+        <div class="card__head">
+            <div>
+                <h2 class="section-title">Awaiting confirmation</h2>
+                <p class="small muted" style="margin-top:2px">@Model.Awaiting.Count(a => a.NeedsMe) needs your action · @Model.Awaiting.Count(a => !a.NeedsMe) waiting on others</p>
+            </div>
+            <a class="btn btn--ghost" asp-controller="Payments" asp-action="Index" asp-route-circleId="@circleId">View all</a>
+        </div>
+        @foreach (var a in Model.Awaiting)
+        {
+            <a class="row" asp-controller="Payments" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@a.Payment.Id">
+                @Ui.Avatar(a.Loan.Borrower.Initials)
+                <span class="row__main">
+                    <span class="row__title">@a.Headline</span>
+                    <span class="row__sub">@a.Detail</span>
+                </span>
+                <span class="row__end">@Ui.Chip(a.Chip, a.ChipLabel)</span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    </section>
+}
 
 @if (Model.HasLoans)
 {

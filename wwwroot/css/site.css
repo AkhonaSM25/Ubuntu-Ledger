@@ -504,3 +504,52 @@ a.filter-chip[aria-current='true'] { border-color: var(--green); background: var
 .affix input.input-validation-error { color: var(--bad); }
 .chart__bar-wrap { height: 100%; }
 .period { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- two-party payments ---------- */
+.chip--awaiting { background: var(--warn-bg); color: var(--warn); }
+.chip--waiting { background: #fff; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.chip--disputed { background: var(--bad-bg); color: var(--bad); }
+
+.nav-badge {
+  margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--gold);
+  color: var(--ink); font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;
+}
+.bottom-nav__item .nav-badge { position: absolute; top: 6px; left: calc(50% + 6px); margin: 0; }
+
+.balance-card {
+  display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 1.5px solid var(--line);
+  border-radius: 16px; background: #fff;
+}
+.balance-card__value { font-size: 22px; line-height: 1.2; font-weight: 800; }
+
+.pay-steps { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
+.pay-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; position: relative; }
+.pay-step + .pay-step::before {
+  content: ''; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0;
+}
+.pay-step--done + .pay-step::before, .pay-step--done + .pay-step--current::before { background: var(--green); }
+.pay-step__dot {
+  position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; background: #fff; border: 2px solid var(--gold); color: var(--gold-ink);
+}
+.pay-step--done .pay-step__dot { background: var(--green); border-color: var(--green); color: #fff; }
+.pay-step--bad .pay-step__dot { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.pay-step--todo .pay-step__dot { border-color: var(--line); color: var(--muted); }
+.pay-step__label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.pay-step--done .pay-step__label, .pay-step--current .pay-step__label { color: var(--ink); }
+
+.mini-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--faint); }
+.mini-check--on { color: var(--ok); }
+
+.notice-card { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; border-left: 4px solid var(--gold); }
+.notice-card--ok { border-left-color: var(--ok); }
+.notice-card--bad { border-left-color: var(--bad); }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 16px; text-align: center;
+  border: 1.5px dashed rgba(15, 81, 50, .35); border-radius: 12px; background: var(--mint); color: var(--green); cursor: pointer;
+}
+.dropzone__title { font-weight: 700; }
+.dropzone__text { font-size: 13px; color: var(--muted); }
+.dropzone input[type='file'] { max-width: 100%; margin-top: 8px; font-size: 14px; }
+.proof-img { max-width: 100%; max-height: 360px; border-radius: 12px; border: 1px solid var(--line); object-fit: contain; align-self: flex-start; }
