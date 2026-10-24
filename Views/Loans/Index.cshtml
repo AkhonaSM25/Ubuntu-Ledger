@@ -1,0 +1,38 @@
+@model LoansViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = access.IsTreasurer ? "Loans" : "My loans";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var open = Model.Loans.Count(l => l.IsOpen);
+}
+<div class="page-head">
+    <div class="page-head__text">
+        <h1 class="page-title">@ViewData["Title"]</h1>
+        <p class="page-sub">@Format.Plural(open, "open loan") · @Format.Zar(Model.Loans.Sum(l => l.Balance)) outstanding</p>
+    </div>
+    @if (access.IsTreasurer)
+    {
+        <a class="btn btn--primary btn--sm" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 18, 2.1)New loan</a>
+    }
+</div>
+<section class="card">
+    @foreach (var l in Model.Loans)
+    {
+        <a class="row row--tall" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+            @Ui.Avatar(l.Loan.Borrower.Initials)
+            <span class="row__main" style="gap:6px">
+                <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                <span class="row__sub">@l.Loan.Reference · @Format.Zar(l.Loan.Principal) lent · @l.PercentRepaid% repaid</span>
+                <span class="progress progress--thin" aria-hidden="true"><span class="progress__bar" style="display:block;width:@(l.PercentRepaid)%"></span></span>
+            </span>
+            <span class="row__end" style="gap:6px"><span class="row__amt">@Format.Zar(l.Balance)</span>@Ui.Chip(l.Status)</span>
+            <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+        </a>
+    }
+    @if (Model.Loans.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("No loans yet", (string?)"Loans appear here as soon as the treasurer records them.", "inset"))" />
+    }
+</section>

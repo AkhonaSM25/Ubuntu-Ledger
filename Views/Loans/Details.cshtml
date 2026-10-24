@@ -1,0 +1,90 @@
+@model LoanDetailViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var s = Model.Summary;
+    var loan = s.Loan;
+    ViewData["Title"] = "Loan " + loan.Reference;
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+
+    var (noticeText, tone, icon) = s.Status switch
+    {
+        LoanStatus.Paid => ("This loan is fully paid. Thank you!", "paid", "check"),
+        LoanStatus.Overdue => ($"{Format.Zar(s.NextAmount)} was due on {Format.Date(s.NextDue!.Value)} ({Format.Plural(s.Days, "day")} overdue).", "overdue", "alert"),
+        _ => ($"Next payment {Format.Zar(s.NextAmount)} is due {Format.Date(s.NextDue!.Value)}" + (s.Days == 0 ? " (today)." : $" (in {Format.Plural(s.Days, "day")})."),
+              s.Status == LoanStatus.DueSoon ? "soon" : "ok", s.Status == LoanStatus.DueSoon ? "clock" : "cal"),
+    };
+    (string Label, string Value, string? Color)[] figures =
+    [
+        ("Principal", Format.Zar(loan.Principal), null), ("Interest accrued", Format.Zar(s.Interest), null),
+        ("Amount paid", Format.Zar(s.Paid), "var(--ok)"), ("Remaining balance", Format.Zar(s.Balance), "var(--green)"),
+    ];
+    var interestText = loan.InterestType == InterestType.Simple ? "simple" : "monthly";
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")All loans</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">Loan @loan.Reference</p>
+        <div class="title-row"><h1 class="page-title">@loan.Borrower.Name</h1>@Ui.Chip(s.Status)</div>
+        <p class="page-sub">Issued @Format.Date(loan.StartDate) · @(loan.RatePercent.ToString("0.##"))% @interestText interest · @Format.Plural(loan.Term, "monthly payment")</p>
+    </div>
+    @if (access.IsTreasurer && s.IsOpen)
+    {
+        <a class="btn btn--gold stretch-m" asp-controller="Repayments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@loan.Id">@Ui.Icon("down", 20, 2.1)Record repayment</a>
+    }
+</div>
+<section class="card card--pad form">
+    <div class="figures">
+        @foreach (var f in figures)
+        {
+            <div><div class="figure__label">@f.Label</div><div class="figure__value" style="@(f.Color is null ? null : "color:" + f.Color)">@f.Value</div></div>
+        }
+    </div>
+    <div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin-bottom:8px;font-size:14px">
+            <span style="font-weight:700">@s.PercentRepaid% repaid</span><span class="muted">@Format.Zar(s.Paid) of @Format.Zar(s.Total)</span>
+        </div>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@s.PercentRepaid" aria-label="Loan repaid">
+            <div class="progress__bar" style="width:@(s.PercentRepaid)%"></div>
+        </div>
+    </div>
+    <div class="notice notice--@tone">@Ui.Icon(icon)@noticeText</div>
+</section>
+<section class="card">
+    <div class="card__head">
+        <div>
+            <h2 class="section-title">Transaction ledger</h2>
+            <p class="small muted" style="margin-top:2px">Every entry for this loan, newest first.</p>
+        </div>
+        <a class="btn btn--secondary btn--xs" asp-action="Export" asp-route-circleId="@circleId" asp-route-id="@loan.Id">@Ui.Icon("download", 18)Export CSV</a>
+    </div>
+    <div role="table" aria-label="Transaction ledger" class="only-desk">
+        <div role="row" class="table-head">
+            <span role="columnheader" style="width:120px">Date</span><span role="columnheader" style="flex:1">Transaction</span>
+            <span role="columnheader" style="width:150px;text-align:right">Amount</span>
+            <span role="columnheader" style="width:160px;text-align:right">Balance owing</span>
+        </div>
+        @foreach (var r in Model.Rows)
+        {
+            <div role="row" class="row" style="min-height:64px">
+                <span role="cell" class="muted" style="width:120px">@Format.Date(r.Date)</span>
+                <span role="cell" class="row__main" style="gap:0"><span class="row__title">@r.Title</span><span class="row__sub">@r.Sub</span></span>
+                <span role="cell" style="width:150px;text-align:right;font-weight:700;color:@(r.IsCredit ? "var(--ok)" : "var(--ink)")">@(r.IsCredit ? "− " : "+ ")@Format.Zar(r.Amount)</span>
+                <span role="cell" style="width:160px;text-align:right;font-weight:800">@Format.Zar(r.Balance)</span>
+            </div>
+        }
+    </div>
+    <div class="only-mob">
+        @foreach (var r in Model.Rows)
+        {
+            <div class="row" style="min-height:0;padding:14px 16px;justify-content:space-between;align-items:flex-start">
+                <div style="min-width:0"><div style="font-weight:700">@r.Title</div><div class="small muted">@Format.Date(r.Date) · @r.Sub</div></div>
+                <div class="tl__end">
+                    <div style="font-weight:700;color:@(r.IsCredit ? "var(--ok)" : "var(--ink)")">@(r.IsCredit ? "− " : "+ ")@Format.Zar(r.Amount)</div>
+                    <div class="small muted">Owing @Format.Zar(r.Balance)</div>
+                </div>
+            </div>
+        }
+    </div>
+</section>

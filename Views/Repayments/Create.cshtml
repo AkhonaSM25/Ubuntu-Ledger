@@ -1,0 +1,99 @@
+@model RepaymentViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Record a repayment";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var sel = Model.Selected!;
+}
+<a class="back-link" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Cancel</a>
+<div>
+    <p class="eyebrow">Payment received</p>
+    <h1 class="page-title">Record a repayment</h1>
+    <p class="page-sub">The new balance is shown before you confirm.</p>
+</div>
+<form method="post" asp-action="Create" asp-route-circleId="@circleId" class="split" data-repay-form
+      data-balance="@Format.Input(sel.Balance)">
+    <div class="card card--pad form split__main">
+        @* Enter key submits the first button in the form, so make that "Review" rather than a loan choice. *@
+        <button type="submit" name="command" value="review" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+        <input type="hidden" asp-for="LoanId" />
+        <div class="field">
+            <span id="rp-loan-label">Which loan was paid?</span>
+            <div class="loan-pick-list" role="group" aria-labelledby="rp-loan-label">
+                @foreach (var l in Model.OpenLoans)
+                {
+                    <button type="submit" name="command" value="pick-@l.Loan.Id" formnovalidate class="loan-pick" aria-pressed="@(l.Loan.Id == sel.Loan.Id ? "true" : "false")">
+                        @Ui.Avatar(l.Loan.Borrower.Initials, "40")
+                        <span class="row__main" style="gap:0">
+                            <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                            <span class="row__sub" style="font-weight:400">@l.Loan.Reference</span>
+                        </span>
+                        <span class="row__end" style="gap:0"><span class="row__amt">@Format.Zar(l.Balance)</span><span class="row__caption" style="font-weight:400">owing</span></span>
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="field">
+            <label for="Amount">Amount received</label>
+            <span class="affix affix--lg@(Model.Error is null ? "" : " affix--error")">
+                <span class="affix__mark">R</span>
+                <input asp-for="Amount" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="rp-err" />
+            </span>
+            <span id="rp-err" class="field__error" data-repay-error @(Model.Error is null ? "hidden" : null)>@Model.Error</span>
+            <div class="filter-chips">
+                <button type="button" class="quick-chip" data-fill-amount="@Format.Input(sel.NextAmount)">Instalment @Format.Zar(sel.NextAmount)</button>
+                <button type="button" class="quick-chip" data-fill-amount="@Format.Input(sel.Balance)">Full balance @Format.Zar(sel.Balance)</button>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label class="field">
+                Date received
+                <input class="input" asp-for="Date" type="date" />
+            </label>
+            <fieldset class="field" style="border:0;padding:0;margin:0">
+                <legend style="padding:0;margin-bottom:8px">How was it paid?</legend>
+                <div class="segmented">
+                    @foreach (var m in new[] { PaymentMethod.EFT, PaymentMethod.Cash })
+                    {
+                        <label class="seg-btn seg-radio"><input type="radio" name="Method" value="@m" checked="@(Model.Method == m)" class="sr-only" />@m</label>
+                    }
+                </div>
+            </fieldset>
+        </div>
+        <label class="field">
+            <span>Note <span class="field__opt">(optional)</span></span>
+            <input class="input" asp-for="Note" placeholder="e.g. October instalment" />
+        </label>
+        <div class="form-actions">
+            <a class="btn btn--secondary" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@circleId">Cancel</a>
+            <button type="submit" name="command" value="review" class="btn btn--primary">Review repayment</button>
+        </div>
+    </div>
+    <aside class="card split__side preview">
+        <div style="display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)">
+            @Ui.Avatar(sel.Loan.Borrower.Initials)
+            <span style="display:flex;flex-direction:column"><span style="font-weight:700">@sel.Loan.Borrower.Name</span><span class="small muted">Loan @sel.Loan.Reference</span></span>
+        </div>
+        <div class="preview__line"><span>Balance now</span><span>@Format.Zar(sel.Balance)</span></div>
+        <div class="preview__line"><span>This payment</span><span style="color:var(--ok)" data-this-payment>− @Format.Zar(Model.Error is null ? Model.Amount ?? 0 : 0)</span></div>
+        <div class="preview__result">
+            <span style="font-size:14px;font-weight:600">Updated balance</span>
+            <span class="preview__result-value" data-new-balance>@Format.Zar(Model.NewBalance)</span>
+            <span class="small muted" data-new-note>@(Model.Error is not null ? "Fix the amount to see the new balance." : Model.NewBalance == 0 ? "This pays the loan off in full." : "Still owing after this payment.")</span>
+        </div>
+    </aside>
+    @if (Model.Confirming)
+    {
+        ConfirmLine[] lines =
+        [
+            new("Member", sel.Loan.Borrower.Name),
+            new("Loan", sel.Loan.Reference),
+            new("Received", $"{Format.Zar(Model.Amount ?? 0)} · {Model.Method}"),
+            new("Date", Format.Date(Model.Date)),
+            new("New balance", Format.Zar(Model.NewBalance), true),
+        ];
+        <partial name="_ConfirmModal" model="@(("Record this repayment?", "This will reduce the balance straight away.", (IReadOnlyList<ConfirmLine>)lines, "Yes, record it"))" />
+    }
+</form>

@@ -1,0 +1,101 @@
+@model NewLoanViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "New loan";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var dues = Model.DueDates;
+    var rate = (Model.RatePercent ?? 0).ToString("0.##");
+}
+<a class="back-link" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Cancel</a>
+<div>
+    <p class="eyebrow">New entry</p>
+    <h1 class="page-title">Create a new loan</h1>
+    <p class="page-sub">Check the numbers on the right before you confirm.</p>
+</div>
+<form method="post" asp-action="Create" asp-route-circleId="@circleId" class="split" data-loan-form>
+    <div class="card card--pad form split__main">
+        <div asp-validation-summary="ModelOnly"></div>
+        <label class="field">
+            Member
+            <select class="input" asp-for="BorrowerId" asp-items="@(new SelectList(Model.Borrowers, "Id", "Name"))"></select>
+            <span asp-validation-for="BorrowerId"></span>
+        </label>
+        <div class="form-grid">
+            <div class="field">
+                <label for="Principal">Amount to lend</label>
+                <span class="affix"><span class="affix__mark">R</span><input asp-for="Principal" type="number" inputmode="decimal" min="0" step="0.01" /></span>
+                <span asp-validation-for="Principal"></span>
+            </div>
+            <div class="field">
+                <label for="RatePercent">Interest rate</label>
+                <span class="affix"><input asp-for="RatePercent" type="number" inputmode="decimal" min="0" max="100" step="0.01" /><span class="affix__mark">%</span></span>
+                <span asp-validation-for="RatePercent"></span>
+            </div>
+        </div>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend style="padding:0;margin-bottom:8px">How is interest charged?</legend>
+            <div class="segmented">
+                @foreach (var (value, label) in new[] { (InterestType.Simple, "Simple"), (InterestType.Monthly, "Monthly") })
+                {
+                    <label class="seg-btn seg-radio">
+                        <input type="radio" name="Type" value="@value" checked="@(Model.Type == value)" class="sr-only" />@label
+                    </label>
+                }
+            </div>
+            <span class="field__help" data-interest-help>
+                @(Model.Type == InterestType.Simple
+                    ? $"One flat charge of {rate}% on the amount lent, added when the loan starts."
+                    : $"{rate}% of the amount lent is added every month, for {Format.Plural(Model.Term, "month")}.")
+            </span>
+        </fieldset>
+        <div class="form-grid">
+            <label class="field">
+                Start date
+                <input class="input" asp-for="StartDate" type="date" />
+            </label>
+            <label class="field">
+                Monthly payments
+                <select class="input" asp-for="Term" asp-items="@(LoanService.Terms.Select(n => new SelectListItem(n + " monthly payments", n.ToString())))"></select>
+            </label>
+        </div>
+        <div class="form-actions">
+            <a class="btn btn--secondary" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@circleId">Cancel</a>
+            <button type="submit" name="command" value="review" class="btn btn--primary">Review loan</button>
+        </div>
+    </div>
+    <aside class="card split__side">
+        <div class="summary-head">
+            <div class="summary-head__label">Total payable</div>
+            <div class="summary-head__value" data-total>@Format.Zar(Model.Total)</div>
+            <div class="summary-head__label" style="margin-top:6px" data-breakdown>@Format.Zar(Model.Principal ?? 0) lent + @Format.Zar(Model.Interest) interest</div>
+        </div>
+        <div class="sched" data-schedule>
+            <h2 style="font-size:16px;font-weight:700">Repayment schedule</h2>
+            @for (var i = 0; i < Math.Min(4, dues.Count); i++)
+            {
+                <div class="sched__row">
+                    <span class="sched__n"><span>@(i + 1)</span>@Format.Date(dues[i])</span>
+                    <span style="font-weight:700">@Format.Zar(Model.Instalment)</span>
+                </div>
+            }
+            @if (dues.Count > 4)
+            {
+                <p class="sched__more">+ @Format.Plural(dues.Count - 4, "more payment") of @Format.Zar(Model.Instalment) each</p>
+            }
+        </div>
+    </aside>
+    @if (Model.Confirming)
+    {
+        ConfirmLine[] lines =
+        [
+            new("Member", Model.BorrowerName),
+            new("Amount lent", Format.Zar(Model.Principal ?? 0)),
+            new("Interest", $"{Format.Zar(Model.Interest)} ({rate}%)"),
+            new("First payment", $"{Format.Date(dues[0])}, {Format.Zar(Model.Instalment)}"),
+            new("Total payable", Format.Zar(Model.Total), true),
+        ];
+        <partial name="_ConfirmModal" model="@(("Create this loan?", "Please check the details. Once created, it shows in everyone’s ledger.", (IReadOnlyList<ConfirmLine>)lines, "Yes, create loan"))" />
+    }
+</form>
