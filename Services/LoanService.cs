@@ -11,7 +11,7 @@ public record NewPayment(int LoanId, decimal Amount, DateOnly Date, PaymentMetho
 public record PaymentEntry(Repayment Payment, Loan Loan, string SubmittedByName);
 
 // What the sidebar and nav badge need: payments waiting on me, what is owed, and how much of that is pending.
-public record PaymentSnapshot(int NeedsMyAction, decimal Outstanding, decimal Pending);
+public record PaymentSnapshot(int NeedsMyAction, decimal Outstanding, decimal Pending, int Requests = 0);
 
 // Loans and payments. Only the treasurer records loans. A payment is submitted by one side (the borrower says they
 // paid, or the treasurer says they received) and only counts toward the balance once the other side confirms it.
@@ -253,7 +253,12 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         var rows = await waiting.Select(r => new { r.SubmittedBy, r.Status, r.Loan.BorrowerId }).ToListAsync();
         var needs = rows.Count(r => NeedsMyAction(access, r.BorrowerId, r.SubmittedBy, r.Status));
 
-        return new PaymentSnapshot(needs, visible.Sum(l => l.Balance), visible.Sum(l => l.Pending));
+        // Loan requests waiting on the treasurer, for the badge on the Loans link.
+        var requests = access.IsTreasurer
+            ? await db.LoanRequests.CountAsync(r => r.CircleId == access.Circle.Id && r.Status == LoanRequestStatus.Pending)
+            : 0;
+
+        return new PaymentSnapshot(needs, visible.Sum(l => l.Balance), visible.Sum(l => l.Pending), requests);
     }
 
     private async Task<string> NextReferenceAsync()

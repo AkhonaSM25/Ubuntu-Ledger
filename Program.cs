@@ -49,6 +49,7 @@ builder.Services.AddSingleton<LedgerClock>();
 builder.Services.AddScoped<CircleAccessService>();
 builder.Services.AddScoped<CircleService>();
 builder.Services.AddScoped<LoanService>();
+builder.Services.AddScoped<LoanRequestService>();
 builder.Services.AddSingleton<ProofStore>();
 
 var app = builder.Build();

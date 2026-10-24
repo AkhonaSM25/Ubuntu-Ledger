@@ -11,6 +11,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Loan> Loans => Set<Loan>();
     public DbSet<Repayment> Repayments => Set<Repayment>();
+    public DbSet<LoanRequest> LoanRequests => Set<LoanRequest>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -29,5 +30,9 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
         b.Entity<Loan>().Property(l => l.RatePercent).HasPrecision(9, 4);
 
         b.Entity<Repayment>().Property(r => r.Amount).HasPrecision(18, 2);
+
+        b.Entity<LoanRequest>().Property(r => r.Amount).HasPrecision(18, 2);
+        b.Entity<LoanRequest>().HasIndex(r => new { r.CircleId, r.Status });
+        b.Entity<LoanRequest>().HasOne(r => r.Requester).WithMany().OnDelete(DeleteBehavior.Restrict);
     }
 }

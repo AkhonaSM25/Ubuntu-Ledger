@@ -127,6 +127,57 @@ namespace UbuntuLedger.Data.Migrations
                     b.ToTable("Loans");
                 });
 
+            modelBuilder.Entity("UbuntuLedger.Models.LoanRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CircleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DecidedById")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LoanId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RequesterId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Term")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequesterId");
+
+                    b.HasIndex("CircleId", "Status");
+
+                    b.ToTable("LoanRequests");
+                });
+
             modelBuilder.Entity("UbuntuLedger.Models.Membership", b =>
                 {
                     b.Property<int>("Id")
@@ -289,6 +340,25 @@ namespace UbuntuLedger.Data.Migrations
                     b.Navigation("Borrower");
 
                     b.Navigation("Circle");
+                });
+
+            modelBuilder.Entity("UbuntuLedger.Models.LoanRequest", b =>
+                {
+                    b.HasOne("UbuntuLedger.Models.Circle", "Circle")
+                        .WithMany()
+                        .HasForeignKey("CircleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UbuntuLedger.Models.Person", "Requester")
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Circle");
+
+                    b.Navigation("Requester");
                 });
 
             modelBuilder.Entity("UbuntuLedger.Models.Membership", b =>

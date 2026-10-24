@@ -1,0 +1,94 @@
+@model RequestDetailViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var r = Model.Request;
+    var (kind, label) = RequestUi.Chip(r.Status);
+    ViewData["Title"] = "Loan request";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+    var t = Model.Terms;
+    var rate = (t.RatePercent ?? 0).ToString("0.##");
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Loan requests</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">@r.Requester.Name</p>
+        <div class="title-row"><h1 class="page-title">@Format.Zar(r.Amount)</h1>@Ui.Chip(kind, label)</div>
+        <p class="page-sub">Asked on @Format.Date(DateOnly.FromDateTime(r.CreatedAt)) for @Format.Plural(r.Term, "monthly payment").</p>
+    </div>
+</div>
+<div class="split">
+    <section class="card card--pad form split__main">
+        <div class="kv">
+            <div class="kv__row"><span>Member</span><span>@r.Requester.Name</span></div>
+            <div class="kv__row"><span>Amount asked for</span><span>@Format.Zar(r.Amount)</span></div>
+            <div class="kv__row"><span>Monthly payments</span><span>@r.Term</span></div>
+            <div class="kv__row"><span>Reason</span><span>@(string.IsNullOrEmpty(r.Reason) ? "None given" : r.Reason)</span></div>
+            @if (access.IsTreasurer)
+            {
+                <div class="kv__row"><span>Already owes</span><span>@Format.Zar(Model.OwedAlready) across @Format.Plural(Model.OpenLoans, "open loan")</span></div>
+            }
+        </div>
+        @if (access.IsTreasurer && Model.OverdueLoans > 0)
+        {
+            <div class="notice notice--overdue">@Ui.Icon("alert")<span>@r.Requester.FirstName has @Format.Plural(Model.OverdueLoans, "overdue loan"). Consider declining until it is paid.</span></div>
+        }
+        @if (r.Status == LoanRequestStatus.Declined && !string.IsNullOrEmpty(r.DeclineReason))
+        {
+            <div class="notice notice--overdue">@Ui.Icon("alert")<span>Declined: @r.DeclineReason</span></div>
+        }
+        @if (r.Status == LoanRequestStatus.Approved && r.LoanId is { } loanId)
+        {
+            <div><a class="btn btn--primary" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@loanId">View the loan</a></div>
+        }
+        @if (Model.CanCancel)
+        {
+            <form method="post" asp-action="Cancel" asp-route-circleId="@circleId" asp-route-id="@r.Id">
+                <button type="submit" class="btn btn--secondary">Cancel my request</button>
+            </form>
+        }
+        @if (Model.CanDecide)
+        {
+            <form method="post" asp-action="Approve" asp-route-circleId="@circleId" asp-route-id="@r.Id" class="form divider-top">
+                <h2 class="section-title">Approve and set the terms</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="ratePercent">Interest rate</label>
+                        <span class="affix"><input id="ratePercent" name="ratePercent" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="@rate" /><span class="affix__mark">%</span></span>
+                    </div>
+                    <label class="field">
+                        Start date
+                        <input class="input" name="startDate" type="date" value="@t.StartDate.ToString("yyyy-MM-dd")" />
+                    </label>
+                </div>
+                <fieldset class="field" style="border:0;padding:0;margin:0">
+                    <legend style="padding:0;margin-bottom:8px">How is interest charged?</legend>
+                    <div class="segmented">
+                        @foreach (var (value, text) in new[] { (InterestType.Simple, "Simple"), (InterestType.Monthly, "Monthly") })
+                        {
+                            <label class="seg-btn seg-radio">
+                                <input type="radio" name="type" value="@value" checked="@(t.Type == value)" class="sr-only" />@text
+                            </label>
+                        }
+                    </div>
+                    <span class="field__help">At the default @rate% simple interest the member would repay @Format.Zar(t.Total), @Format.Plural(r.Term, "payment") of @Format.Zar(t.Instalment).</span>
+                </fieldset>
+                <div><button type="submit" class="btn btn--primary">@Ui.Icon("check", 20, 2.4)Approve and create loan</button></div>
+            </form>
+            <form method="post" asp-action="Decline" asp-route-circleId="@circleId" asp-route-id="@r.Id" class="form divider-top">
+                <label class="field">
+                    <span>Not this time? <span class="field__opt">Say why, optional</span></span>
+                    <input class="input" name="reason" maxlength="200" placeholder="e.g. Please finish your current loan first" />
+                </label>
+                <div><button type="submit" class="btn btn--danger">Decline request</button></div>
+            </form>
+        }
+    </section>
+    <aside class="card split__side preview">
+        <div>
+            <h2 class="section-title">How requests work</h2>
+            <p class="small muted" style="margin-top:4px">@(access.IsTreasurer ? "Approving creates the loan straight away, using the terms you set here. The member sees it in their ledger." : "The treasurer sets the interest when approving. You will see the loan in your ledger as soon as it is approved.")</p>
+        </div>
+    </aside>
+</div>

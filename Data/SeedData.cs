@@ -90,6 +90,13 @@ public static class SeedData
             SubmittedBy = PaymentSide.Collector, Status = PaymentStatus.Pending, RecordedAt = DateTime.Parse("2026-10-14"),
         });
 
+        // A request waiting on the treasurer, so the demo shows the loan request flow from the first sign-in.
+        db.LoanRequests.Add(new LoanRequest
+        {
+            Circle = circle, Requester = lerato, Amount = 2000, Term = 4, Reason = "Stock for my stall",
+            Status = LoanRequestStatus.Pending, CreatedAt = DateTime.Parse("2026-10-14"),
+        });
+
         db.Loans.AddRange(loans);
         await db.SaveChangesAsync();
 

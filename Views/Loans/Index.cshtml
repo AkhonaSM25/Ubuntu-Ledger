@@ -12,10 +12,13 @@
         <h1 class="page-title">@ViewData["Title"]</h1>
         <p class="page-sub">@Format.Plural(open, "open loan") · @Format.Zar(Model.Loans.Sum(l => l.Balance)) outstanding</p>
     </div>
-    @if (access.IsTreasurer)
-    {
-        <a class="btn btn--primary btn--sm" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 18, 2.1)New loan</a>
-    }
+    <div class="actions">
+        <a class="btn btn--secondary btn--sm" asp-controller="Requests" asp-action="Index" asp-route-circleId="@circleId">Loan requests</a>
+        @if (access.IsTreasurer)
+        {
+            <a class="btn btn--primary btn--sm" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 18, 2.1)New loan</a>
+        }
+    </div>
 </div>
 <section class="card">
     @foreach (var l in Model.Loans)

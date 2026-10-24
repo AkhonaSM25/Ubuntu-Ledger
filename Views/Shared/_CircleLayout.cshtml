@@ -25,7 +25,7 @@
         <nav aria-label="Main" class="side-nav">
             @foreach (var n in nav)
             {
-                <a class="side-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 22, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> }</a>
+                <a class="side-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 22, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> } @if (n.Key == "loans" && snapshot is { Requests: > 0 }) { <span class="nav-badge" aria-label="@snapshot.Requests requests waiting">@snapshot.Requests</span> }</a>
             }
         </nav>
         <div class="sidebar__foot">
@@ -75,7 +75,7 @@
     <nav aria-label="Main" class="bottom-nav only-mob" style="grid-template-columns:repeat(@nav.Count,1fr)">
         @foreach (var n in nav)
         {
-            <a class="bottom-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 24, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> }</a>
+            <a class="bottom-nav__item" asp-controller="@n.Controller" asp-action="Index" asp-route-circleId="@circleId" aria-current="@(n.Key == active ? "page" : null)">@Ui.Icon(n.Icon, 24, 1.9)@n.Label @if (n.Key == "payments" && snapshot is { NeedsMyAction: > 0 }) { <span class="nav-badge" aria-label="@snapshot.NeedsMyAction waiting">@snapshot.NeedsMyAction</span> } @if (n.Key == "loans" && snapshot is { Requests: > 0 }) { <span class="nav-badge" aria-label="@snapshot.Requests requests waiting">@snapshot.Requests</span> }</a>
         }
     </nav>
 </div>

@@ -14,7 +14,7 @@
         <h1 class="page-title">@greeting, @access.Me.FirstName</h1>
         <p class="page-sub">@(access.IsTreasurer ? $"Here is how {access.Circle.Name} is doing today." : "Here is what you owe and what you have paid.")</p>
     </div>
-    @if ((access.IsTreasurer && Model.HasLoans) || Model.OwnLoanId is not null)
+    @if ((access.IsTreasurer && Model.HasLoans) || Model.OwnLoanId is not null || !access.IsTreasurer)
     {
         <div class="actions">
             @if (access.IsTreasurer && Model.HasLoans)
@@ -25,6 +25,10 @@
             {
                 <a class="btn @(access.IsTreasurer ? "btn--secondary" : "btn--gold")" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@ownLoan">@Ui.Icon("down", 20, 2.1)I made a payment</a>
             }
+            @if (!access.IsTreasurer)
+            {
+                <a class="btn @(Model.OwnLoanId is null ? "btn--primary" : "btn--secondary")" asp-controller="Requests" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)Request a loan</a>
+            }
             @if (access.IsTreasurer && Model.HasLoans)
             {
                 <a class="btn btn--primary" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)New loan</a>
@@ -34,6 +38,32 @@
 </div>
 
 <partial name="_StatGrid" model="Model.Stats" />
+
+@if (Model.Requests.Count > 0)
+{
+    <section class="card">
+        <div class="card__head">
+            <div>
+                <h2 class="section-title">Loan requests</h2>
+                <p class="small muted" style="margin-top:2px">@(access.IsTreasurer ? $"{Model.Requests.Count} waiting for your answer" : "Your latest requests")</p>
+            </div>
+            <a class="btn btn--ghost" asp-controller="Requests" asp-action="Index" asp-route-circleId="@circleId">View all</a>
+        </div>
+        @foreach (var rq in Model.Requests)
+        {
+            var (rkind, rlabel) = RequestUi.Chip(rq.Status);
+            <a class="row row--tall" asp-controller="Requests" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@rq.Id">
+                @Ui.Avatar(rq.Requester.Initials)
+                <span class="row__main">
+                    <span class="row__title">@(access.IsTreasurer ? rq.Requester.Name + " asks for " : "You asked for ")@Format.Zar(rq.Amount)</span>
+                    <span class="row__sub">@Format.Plural(rq.Term, "monthly payment")@(string.IsNullOrEmpty(rq.Reason) ? "" : " · " + rq.Reason)</span>
+                </span>
+                <span class="row__end">@Ui.Chip(rkind, rlabel)</span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    </section>
+}
 
 @if (Model.Awaiting.Count > 0)
 {

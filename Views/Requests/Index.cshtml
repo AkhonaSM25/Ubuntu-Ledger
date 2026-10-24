@@ -1,0 +1,59 @@
+@model RequestListViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Loan requests";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<a class="back-link" asp-controller="Loans" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Loans</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">Borrowing</p>
+        <h1 class="page-title">Loan requests</h1>
+        <p class="page-sub">@(access.IsTreasurer ? "Members ask here. Approving a request creates the loan." : "Ask the treasurer for a loan and follow the answer here.")</p>
+    </div>
+    @if (!access.IsTreasurer && Model.BlockedMessage is null)
+    {
+        <div class="actions">
+            <a class="btn btn--primary" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 20, 2.1)Request a loan</a>
+        </div>
+    }
+</div>
+@if (!access.IsTreasurer && Model.BlockedMessage is not null)
+{
+    <div class="notice notice--overdue">@Ui.Icon("alert")<span>@Model.BlockedMessage</span></div>
+}
+@{
+    async Task Rows(IReadOnlyList<LoanRequest> list)
+    {
+        foreach (var r in list)
+        {
+            var (kind, label) = RequestUi.Chip(r.Status);
+            <a class="row row--tall" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@r.Id">
+                @Ui.Avatar(r.Requester.Initials)
+                <span class="row__main">
+                    <span class="row__title">@(access.IsTreasurer ? r.Requester.Name + " asks for " : "You asked for ")@Format.Zar(r.Amount)</span>
+                    <span class="row__sub">@Format.Plural(r.Term, "monthly payment") · @Format.Date(DateOnly.FromDateTime(r.CreatedAt))@(string.IsNullOrEmpty(r.Reason) ? "" : " · " + r.Reason)</span>
+                </span>
+                <span class="row__end">@Ui.Chip(kind, label)</span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    }
+}
+<section class="card">
+    <div class="card__head"><h2 class="section-title">Waiting for an answer</h2></div>
+    @{ await Rows(Model.Open); }
+    @if (Model.Open.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("No requests waiting", (string?)(access.IsTreasurer ? "When a member asks for a loan it will show up here." : "Nothing is waiting on the treasurer."), "default"))" />
+    }
+</section>
+@if (Model.Recent.Count > 0)
+{
+    <section class="card">
+        <div class="card__head"><h2 class="section-title">Answered in the last two weeks</h2></div>
+        @{ await Rows(Model.Recent); }
+    </section>
+}

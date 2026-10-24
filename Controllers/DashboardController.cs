@@ -8,7 +8,7 @@ using UbuntuLedger.ViewModels;
 namespace UbuntuLedger.Controllers;
 
 [Route("circles/{circleId:int}")]
-public class DashboardController(CircleAccessService access, LoanService loans, LedgerDbContext db, LedgerClock clock) : CircleControllerBase(access)
+public class DashboardController(CircleAccessService access, LoanService loans, LoanRequestService requests, LedgerDbContext db, LedgerClock clock) : CircleControllerBase(access)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -47,6 +47,9 @@ public class DashboardController(CircleAccessService access, LoanService loans, 
             .Where(r => r.Payment.Status is PaymentStatus.Pending or PaymentStatus.Disputed)
             .OrderByDescending(r => r.NeedsMe).Take(3).ToList();
 
+        var (openRequests, recentRequests) = await requests.ListAsync(Access);
+        var shownRequests = Access.IsTreasurer ? openRequests : openRequests.Concat(recentRequests).Take(2).ToList();
+
         var hasMembers = await db.Memberships.AnyAsync(m => m.CircleId == Access.Circle.Id && m.Role == CircleRole.Member);
         return View(new DashboardViewModel
         {
@@ -58,6 +61,7 @@ public class DashboardController(CircleAccessService access, LoanService loans, 
             OwnLoanId = visible.Where(l => l.IsOpen && l.Available > 0 && l.Loan.BorrowerId == Access.Me.Id)
                 .OrderBy(l => l.NextDue).Select(l => (int?)l.Loan.Id).FirstOrDefault(),
             Awaiting = awaiting,
+            Requests = shownRequests,
             Today = today,
         });
     }

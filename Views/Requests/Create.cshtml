@@ -1,0 +1,46 @@
+@model NewLoanRequestViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Request a loan";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Cancel</a>
+<div>
+    <p class="eyebrow">Borrowing</p>
+    <h1 class="page-title">Request a loan</h1>
+    <p class="page-sub">The treasurer sets the interest when they approve it.</p>
+</div>
+<form method="post" asp-action="Create" asp-route-circleId="@circleId" class="split">
+    <div class="card card--pad form split__main">
+        <div asp-validation-summary="ModelOnly"></div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="Amount">How much do you need?</label>
+                <span class="affix"><span class="affix__mark">R</span><input asp-for="Amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2000.00" required /></span>
+                <span asp-validation-for="Amount"></span>
+            </div>
+            <label class="field">
+                Monthly payments
+                <select class="input" asp-for="Term" asp-items="@(LoanService.Terms.Select(n => new SelectListItem(n + " monthly payments", n.ToString())))"></select>
+                <span asp-validation-for="Term"></span>
+            </label>
+        </div>
+        <label class="field">
+            <span>What is it for? <span class="field__opt">Optional</span></span>
+            <input class="input" asp-for="Reason" maxlength="200" placeholder="e.g. School fees" />
+            <span asp-validation-for="Reason"></span>
+        </label>
+        <div class="form-actions">
+            <a class="btn btn--secondary" asp-action="Index" asp-route-circleId="@circleId">Cancel</a>
+            <button type="submit" class="btn btn--primary">Send request</button>
+        </div>
+    </div>
+    <aside class="card split__side preview">
+        <div>
+            <h2 class="section-title">What happens next</h2>
+            <p class="small muted" style="margin-top:4px">The treasurer sees your request, then approves or declines it. If it is approved, the loan appears in your ledger and you can start paying it back. You can cancel while it is waiting.</p>
+        </div>
+    </aside>
+</form>

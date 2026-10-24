@@ -13,6 +13,8 @@ public class DashboardViewModel
     // The signed-in person's own loan with something left to pay (earliest due first), for the "I made a payment" button.
     public int? OwnLoanId { get; init; }
     public required IReadOnlyList<PaymentRow> Awaiting { get; init; }
+    // Treasurer: loan requests waiting for an answer. Member: their own requests that are waiting or were answered recently.
+    public required IReadOnlyList<LoanRequest> Requests { get; init; }
     public required DateOnly Today { get; init; }
 }
 

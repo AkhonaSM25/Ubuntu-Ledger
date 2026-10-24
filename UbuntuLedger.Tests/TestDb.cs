@@ -20,6 +20,7 @@ public sealed class TestDb : IDisposable
     public LedgerClock Clock { get; }
     public CircleService Circles { get; }
     public LoanService Loans { get; }
+    public LoanRequestService Requests { get; }
     public CircleAccessService Access { get; }
 
     private TestDb()
@@ -30,6 +31,7 @@ public sealed class TestDb : IDisposable
         Clock = new LedgerClock(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Ledger:Today"] = Today.ToString("yyyy-MM-dd") }).Build());
         Circles = new CircleService(Db, Clock);
         Loans = new LoanService(Db, Clock);
+        Requests = new LoanRequestService(Db, Loans);
         Access = new CircleAccessService(Db);
     }
 
