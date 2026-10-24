@@ -1,3 +1,5 @@
+// DEMO DATA ONLY. Never enable seeding in production: it creates accounts with a known PIN.
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UbuntuLedger.Models;
