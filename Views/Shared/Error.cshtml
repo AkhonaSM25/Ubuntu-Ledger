@@ -4,7 +4,7 @@
     var notFound = (int)(ViewData["Code"] ?? 500) == 404;
 }
 <div class="page">
-    <div class="page__body">
+    <main class="page__body" id="main" tabindex="-1">
         <div class="page__inner stack" style="max-width:560px">
             <partial name="_Brand" model="(false, false, true)" />
             <div>
@@ -17,5 +17,5 @@
                 <p class="small muted">Request ID: <code>@Model.RequestId</code></p>
             }
         </div>
-    </div>
+    </main>
 </div>

@@ -16,7 +16,11 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         var visible = await loans.VisibleAsync(Access);
         // Most urgent first: overdue (longest first), due soon, up to date, then paid.
         int Severity(LoanStatus s) => s switch { LoanStatus.Overdue => 0, LoanStatus.DueSoon => 1, LoanStatus.UpToDate => 2, _ => 3 };
-        return View(new LoansViewModel { Loans = visible.OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days).ToList() });
+        return View(new LoansViewModel
+        {
+            Loans = visible.OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days).ToList(),
+            Voided = await loans.VoidedAsync(Access),
+        });
     }
 
     [HttpGet("{id:int}")]
@@ -25,6 +29,16 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         var loan = await loans.FindAsync(Access, id);
         if (loan is null) return NotFound();
         return View(new LoanDetailViewModel { Summary = loan, Rows = LedgerRows(loan), Today = clock.Today });
+    }
+
+    // Voids a loan recorded by mistake. It stays on record with the reason and stops counting.
+    [HttpPost("{id:int}/void"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Void(int id, string? reason)
+    {
+        if (!Access.IsTreasurer) return NotFound();
+        var result = await loans.VoidLoanAsync(Access, id, reason);
+        Toast(result.Succeeded ? "Loan voided. It stays in the history but no longer counts." : result.Error!);
+        return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
     }
 
     [HttpGet("{id:int}/export")]
@@ -81,7 +95,8 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id = result.Id });
     }
 
-    // Oldest first with a running balance, returned newest first.
+    // Oldest first with a running balance, returned newest first. Nothing is hidden: a reversed payment shows twice,
+    // as the payment and as its reversal, and a voided loan ends with a "Loan voided" entry.
     private static List<LedgerRow> LedgerRows(LoanSummary s)
     {
         var l = s.Loan;
@@ -91,14 +106,38 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         run += s.Interest;
         var how = l.InterestType == InterestType.Simple ? $"{l.RatePercent:0.##}% simple interest" : $"{l.RatePercent:0.##}% a month for {Format.Plural(l.Term, "month")}";
         rows.Add(new(l.StartDate, "Interest added", how, s.Interest, false, run));
-        foreach (var r in s.Confirmed.OrderBy(r => r.Date).ThenBy(r => r.Id))
+
+        var events = new List<(DateOnly Date, int Order, int Id, Repayment Payment, bool Reversal)>();
+        foreach (var r in l.Repayments.Where(r => r.Status is PaymentStatus.Confirmed or PaymentStatus.Voided))
         {
-            run -= r.Amount;
-            rows.Add(new(r.Date, "Repayment", r.Method + (string.IsNullOrEmpty(r.Note) ? "" : " · " + r.Note), r.Amount, true, run));
+            events.Add((r.Date, 0, r.Id, r, false));
+            if (r.Status == PaymentStatus.Voided)
+                events.Add((Max(DateOnly.FromDateTime(r.VoidedAt ?? DateTime.UtcNow), r.Date), 1, r.Id, r, true));
+        }
+        foreach (var (date, _, _, r, reversal) in events.OrderBy(e => e.Date).ThenBy(e => e.Order).ThenBy(e => e.Id))
+        {
+            if (reversal)
+            {
+                run += r.Amount;
+                rows.Add(new(date, "Repayment reversed", "Reason: " + r.VoidReason, r.Amount, false, run));
+            }
+            else
+            {
+                run -= r.Amount;
+                rows.Add(new(date, "Repayment", r.Method + (string.IsNullOrEmpty(r.Note) ? "" : " · " + r.Note), r.Amount, true, run));
+            }
+        }
+
+        if (l.IsVoided)
+        {
+            var when = DateOnly.FromDateTime(l.VoidedAt!.Value);
+            rows.Add(new(when, "Loan voided", "Reason: " + l.VoidReason, run, true, 0));
         }
         rows.Reverse();
         return rows;
     }
+
+    private static DateOnly Max(DateOnly a, DateOnly b) => a >= b ? a : b;
 
     private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
 }

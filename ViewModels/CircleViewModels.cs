@@ -37,4 +37,7 @@ public class InviteViewModel
     public string Phone { get; set; } = "";
 
     public IReadOnlyList<Invitation> Pending { get; set; } = [];
+
+    // Invitation id -> a WhatsApp link with the join link in the message.
+    public IReadOnlyDictionary<int, string> ShareLinks { get; set; } = new Dictionary<int, string>();
 }

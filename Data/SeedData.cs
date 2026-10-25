@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UbuntuLedger.Models;
+using UbuntuLedger.Services;
 
 namespace UbuntuLedger.Data;
 
@@ -47,8 +48,8 @@ public static class SeedData
         var savers = new Circle { Name = "Mokoena Savers", CreatedOn = new DateOnly(2025, 2, 1) };
         savers.Memberships.Add(new Membership { Person = thandi, Role = CircleRole.Treasurer, JoinedOn = savers.CreatedOn });
         db.Circles.Add(savers);
-        db.Invitations.Add(new Invitation { Circle = savers, Name = zanele.Name, Phone = zanele.Phone, InvitedBy = thandi, CreatedAt = new DateTime(2026, 10, 10) });
-        db.Invitations.Add(new Invitation { Circle = circle, Name = "Ayanda Cele", Phone = PhoneNumber.Normalize("076 118 4420"), InvitedBy = zanele, CreatedAt = new DateTime(2026, 10, 12) });
+        db.Invitations.Add(new Invitation { Circle = savers, Name = zanele.Name, Phone = zanele.Phone, InvitedBy = thandi, CreatedAt = new DateTime(2026, 10, 10), Token = Tokens.New() });
+        db.Invitations.Add(new Invitation { Circle = circle, Name = "Ayanda Cele", Phone = PhoneNumber.Normalize("076 118 4420"), InvitedBy = zanele, CreatedAt = new DateTime(2026, 10, 12), Token = Tokens.New() });
 
         Loan L(string reference, Person who, decimal principal, decimal rate, InterestType type, string start, int term, params (string d, decimal a, PaymentMethod m, string? n)[] pays)
         {

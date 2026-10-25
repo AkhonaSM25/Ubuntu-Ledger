@@ -39,3 +39,23 @@
         <partial name="_EmptyState" model="@(("No loans yet", (string?)"Loans appear here as soon as the treasurer records them.", "inset"))" />
     }
 </section>
+@if (Model.Voided.Count > 0)
+{
+    <section class="card">
+        <details class="corrections">
+            <summary>Voided loans · @Model.Voided.Count</summary>
+            @foreach (var l in Model.Voided)
+            {
+                <a class="row" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                    @Ui.Avatar(l.Loan.Borrower.Initials)
+                    <span class="row__main" style="gap:2px">
+                        <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                        <span class="row__sub">@l.Loan.Reference · @Format.Zar(l.Loan.Principal) · @l.Loan.VoidReason</span>
+                    </span>
+                    <span class="row__end">@Ui.Chip(l.Status)</span>
+                    <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+                </a>
+            }
+        </details>
+    </section>
+}

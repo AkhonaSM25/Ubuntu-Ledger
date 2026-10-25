@@ -19,13 +19,22 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
 {
     public static readonly int[] Terms = [2, 3, 4, 5, 6, 8, 10, 12];
 
-    // Loans the person may see in this circle, worked out as of today.
+    // Loans the person may see in this circle, worked out as of today. Voided loans are left out: see VoidedAsync.
     public async Task<List<LoanSummary>> VisibleAsync(CircleAccess access)
     {
-        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id);
+        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null);
         if (!access.IsTreasurer) q = q.Where(l => l.BorrowerId == access.Me.Id);
         var loans = await q.Include(l => l.Borrower).Include(l => l.Repayments).AsNoTracking().ToListAsync();
         return loans.Select(l => LoanCalculator.Summarize(l, clock.Today)).ToList();
+    }
+
+    // Loans that were voided, newest first. They stay on record but never count toward a balance.
+    public async Task<List<LoanSummary>> VoidedAsync(CircleAccess access)
+    {
+        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt != null);
+        if (!access.IsTreasurer) q = q.Where(l => l.BorrowerId == access.Me.Id);
+        var loans = await q.Include(l => l.Borrower).Include(l => l.Repayments).AsNoTracking().ToListAsync();
+        return loans.OrderByDescending(l => l.VoidedAt).Select(l => LoanCalculator.Summarize(l, clock.Today)).ToList();
     }
 
     public async Task<LoanSummary?> FindAsync(CircleAccess access, int loanId)
@@ -64,22 +73,34 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         var errors = await ValidateAsync(access, input);
         if (errors.Count > 0) return OperationResult.Fail(errors.Values.First());
 
-        var loan = new Loan
+        // References are unique. If two loans are recorded at the same moment they can pick the same number;
+        // the database refuses the second one, which then takes the next number.
+        for (var attempt = 1; ; attempt++)
         {
-            Reference = await NextReferenceAsync(),
-            CircleId = access.Circle.Id,
-            BorrowerId = input.BorrowerId,
-            Principal = Math.Round(input.Principal, 2),
-            RatePercent = input.RatePercent,
-            InterestType = input.Type,
-            StartDate = input.StartDate,
-            Term = input.Term,
-            CreatedById = access.Me.Id,
-            CreatedAt = DateTime.UtcNow,
-        };
-        db.Loans.Add(loan);
-        await db.SaveChangesAsync();
-        return OperationResult.Ok(loan.Id);
+            var loan = new Loan
+            {
+                Reference = await NextReferenceAsync(),
+                CircleId = access.Circle.Id,
+                BorrowerId = input.BorrowerId,
+                Principal = Math.Round(input.Principal, 2),
+                RatePercent = input.RatePercent,
+                InterestType = input.Type,
+                StartDate = input.StartDate,
+                Term = input.Term,
+                CreatedById = access.Me.Id,
+                CreatedAt = DateTime.UtcNow,
+            };
+            db.Loans.Add(loan);
+            try
+            {
+                await db.SaveChangesAsync();
+                return OperationResult.Ok(loan.Id);
+            }
+            catch (DbUpdateException) when (attempt < 3)
+            {
+                db.Entry(loan).State = EntityState.Detached;
+            }
+        }
     }
 
     // ---- Two-party payments ----
@@ -128,21 +149,32 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
     {
         var loan = await FindAsync(access, input.LoanId);
         if (loan is null) return OperationResult.Fail("That loan was not found.");
+        if (loan.IsVoided) return OperationResult.Fail("That loan was voided, so it cannot take payments.");
         if (!loan.IsOpen) return OperationResult.Fail("That loan is already paid off.");
+
+        // A second tap, or a slow connection and a retry, must not record the same payment twice.
+        var side = loan.Loan.BorrowerId == access.Me.Id ? PaymentSide.Payer : PaymentSide.Collector;
+        var amount = Math.Round(input.Amount, 2);
+        var duplicate = loan.Loan.Repayments.Any(r =>
+            r.Status == PaymentStatus.Pending && r.SubmittedBy == side && r.RecordedById == access.Me.Id
+            && r.Amount == amount && r.Date == input.Date && r.Method == input.Method);
+        if (duplicate)
+            return OperationResult.Fail("An identical payment is already waiting for confirmation. Open Confirmations to see it.");
+
         var error = ValidatePayment(loan, input.Amount, input.Date, clock.Today, input.Reference);
         if (error is not null) return OperationResult.Fail(error);
 
         var payment = new Repayment
         {
             LoanId = loan.Loan.Id,
-            Amount = Math.Round(input.Amount, 2),
+            Amount = amount,
             Date = input.Date,
             Method = input.Method,
             Reference = string.IsNullOrWhiteSpace(input.Reference) ? null : input.Reference.Trim(),
             ProofPath = input.Proof?.Path,
             ProofName = input.Proof?.FileName,
             ProofContentType = input.Proof?.ContentType,
-            SubmittedBy = loan.Loan.BorrowerId == access.Me.Id ? PaymentSide.Payer : PaymentSide.Collector,
+            SubmittedBy = side,
             Status = PaymentStatus.Pending,
             RecordedById = access.Me.Id,
             RecordedAt = DateTime.UtcNow,
@@ -208,6 +240,61 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         return OperationResult.Ok(p.LoanId);
     }
 
+    // ---- Corrections ----
+    // Nothing is ever deleted. A mistake is corrected by voiding the entry with a reason; it stays in the history
+    // for everyone who can see the loan, and stops counting.
+
+    // Reverses a confirmed payment. Whoever collects payments for that loan can do it (see IsCollector).
+    public async Task<OperationResult> VoidPaymentAsync(CircleAccess access, int paymentId, string? reason)
+    {
+        reason = reason?.Trim();
+        if (string.IsNullOrEmpty(reason)) return OperationResult.Fail("Say why this payment is being reversed.");
+        if (reason.Length > 300) return OperationResult.Fail("Keep the reason under 300 characters.");
+
+        var p = await LoadPaymentAsync(access, paymentId);
+        if (p is null) return OperationResult.Fail("That payment was not found.");
+        if (!IsCollector(access, p.Loan.BorrowerId)) return OperationResult.Fail("Only the person who collects payments can reverse one.");
+        if (p.Status != PaymentStatus.Confirmed)
+            return OperationResult.Fail("Only a confirmed payment can be reversed. One that is still waiting can be cancelled instead.");
+
+        p.Status = PaymentStatus.Voided;
+        p.VoidedAt = DateTime.UtcNow;
+        p.VoidedById = access.Me.Id;
+        p.VoidReason = reason;
+        await db.SaveChangesAsync();
+        return OperationResult.Ok(p.LoanId);
+    }
+
+    // Voids a loan that should never have been recorded. Confirmed payments have to be reversed first, so no
+    // money disappears from the history without a reason. Payments still waiting are cancelled with it.
+    public async Task<OperationResult> VoidLoanAsync(CircleAccess access, int loanId, string? reason)
+    {
+        reason = reason?.Trim();
+        if (!access.IsTreasurer) return OperationResult.Fail("Only the treasurer can void a loan.");
+        if (string.IsNullOrEmpty(reason)) return OperationResult.Fail("Say why this loan is being voided.");
+        if (reason.Length > 300) return OperationResult.Fail("Keep the reason under 300 characters.");
+
+        var loan = await db.Loans.Include(l => l.Repayments)
+            .FirstOrDefaultAsync(l => l.Id == loanId && l.CircleId == access.Circle.Id);
+        if (loan is null) return OperationResult.Fail("That loan was not found.");
+        if (loan.IsVoided) return OperationResult.Fail("That loan is already voided.");
+        if (loan.Repayments.Any(r => r.Status == PaymentStatus.Confirmed))
+            return OperationResult.Fail("This loan has confirmed payments. Reverse them first, then void the loan.");
+
+        var now = DateTime.UtcNow;
+        foreach (var r in loan.Repayments.Where(r => r.Status is PaymentStatus.Pending or PaymentStatus.Disputed))
+        {
+            r.Status = PaymentStatus.Cancelled;
+            r.ReviewedById = access.Me.Id;
+            r.ReviewedAt = now;
+        }
+        loan.VoidedAt = now;
+        loan.VoidedById = access.Me.Id;
+        loan.VoidReason = reason;
+        await db.SaveChangesAsync();
+        return OperationResult.Ok(loan.Id);
+    }
+
     // The payment, if it belongs to this circle and the person may see it: the borrower and treasurer, or a member
     // asked to confirm one of the treasurer's own payments.
     public async Task<Repayment?> LoadPaymentAsync(CircleAccess access, int paymentId)
@@ -243,11 +330,32 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         return new PaymentEntry(p, p.Loan, name);
     }
 
+    // The sidebar runs on every page of a circle, so it reads only the columns it needs and tracks nothing. It does
+    // not load loan or borrower objects, or the repayments' notes and proofs.
     public async Task<PaymentSnapshot> SnapshotAsync(CircleAccess access)
     {
-        var visible = await VisibleAsync(access);
+        var mine = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null);
+        if (!access.IsTreasurer) mine = mine.Where(l => l.BorrowerId == access.Me.Id);
 
-        var waiting = db.Repayments.Where(r => r.Loan.CircleId == access.Circle.Id
+        var terms = await mine.AsNoTracking()
+            .Select(l => new { l.Id, l.Principal, l.RatePercent, l.InterestType, l.Term })
+            .ToListAsync();
+        var amounts = (await db.Repayments.AsNoTracking()
+            .Where(r => mine.Any(l => l.Id == r.LoanId) && (r.Status == PaymentStatus.Confirmed || r.Status == PaymentStatus.Pending))
+            .Select(r => new { r.LoanId, r.Status, r.Amount })
+            .ToListAsync()).ToLookup(r => r.LoanId);
+
+        // The same sums as LoanCalculator.Summarize, without building a summary per loan.
+        decimal outstanding = 0, pendingTotal = 0;
+        foreach (var t in terms)
+        {
+            var total = t.Principal + LoanCalculator.InterestFor(t.Principal, t.RatePercent, t.InterestType, t.Term);
+            var paid = amounts[t.Id].Where(a => a.Status == PaymentStatus.Confirmed).Sum(a => a.Amount);
+            outstanding += Math.Max(0, Math.Round(total - paid, 2));
+            pendingTotal += amounts[t.Id].Where(a => a.Status == PaymentStatus.Pending).Sum(a => a.Amount);
+        }
+
+        var waiting = db.Repayments.AsNoTracking().Where(r => r.Loan.CircleId == access.Circle.Id
                                                && (r.Status == PaymentStatus.Pending || r.Status == PaymentStatus.Disputed));
         if (!access.IsTreasurer) waiting = waiting.Where(r => r.Loan.BorrowerId == access.Me.Id || r.Loan.BorrowerId == access.TreasurerId);
         var rows = await waiting.Select(r => new { r.SubmittedBy, r.Status, r.Loan.BorrowerId }).ToListAsync();
@@ -258,13 +366,16 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
             ? await db.LoanRequests.CountAsync(r => r.CircleId == access.Circle.Id && r.Status == LoanRequestStatus.Pending)
             : 0;
 
-        return new PaymentSnapshot(needs, visible.Sum(l => l.Balance), visible.Sum(l => l.Pending), requests);
+        return new PaymentSnapshot(needs, outstanding, pendingTotal, requests);
     }
 
+    // Asks the database for the newest reference instead of reading them all. Comparing length first keeps
+    // UL-10000 after UL-9999.
     private async Task<string> NextReferenceAsync()
     {
-        var refs = await db.Loans.Select(l => l.Reference).ToListAsync();
-        var max = refs.Select(r => int.TryParse(r.Replace("UL-", ""), out var n) ? n : 0).DefaultIfEmpty(100).Max();
+        var last = await db.Loans.OrderByDescending(l => l.Reference.Length).ThenByDescending(l => l.Reference)
+            .Select(l => l.Reference).FirstOrDefaultAsync();
+        var max = last is not null && int.TryParse(last.Replace("UL-", ""), out var n) ? n : 100;
         return $"UL-{max + 1:0000}";
     }
 }

@@ -27,6 +27,15 @@ public class Loan
     public int CreatedById { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    // Corrections never delete anything. A voided loan stays in the history, marked, and is left out of every total.
+    public DateTime? VoidedAt { get; set; }
+    public int? VoidedById { get; set; }
+
+    [StringLength(300)]
+    public string? VoidReason { get; set; }
+
+    public bool IsVoided => VoidedAt is not null;
+
     public ICollection<Repayment> Repayments { get; set; } = new List<Repayment>();
 }
 
@@ -69,4 +78,11 @@ public class Repayment
 
     [StringLength(300)]
     public string? DisputeReason { get; set; }
+
+    // Set when a confirmed payment is reversed. The payment stays in the history with its reason.
+    public DateTime? VoidedAt { get; set; }
+    public int? VoidedById { get; set; }
+
+    [StringLength(300)]
+    public string? VoidReason { get; set; }
 }

@@ -15,6 +15,9 @@ public class PaymentRow
     public required bool NeedsMe { get; init; }
     public required bool IsMine { get; init; }
 
+    // A WhatsApp link to remind the other person, when this is my payment and it is still waiting.
+    public string? NudgeUrl { get; set; }
+
     public static PaymentRow From(CircleAccess access, PaymentEntry entry)
     {
         var p = entry.Payment;
@@ -41,6 +44,7 @@ public class PaymentRow
         {
             PaymentStatus.Disputed => ("disputed", (string?)null),
             PaymentStatus.Confirmed => ("paid", "Confirmed"),
+            PaymentStatus.Voided => ("overdue", "Reversed"),
             _ when needsMe => ("awaiting", (string?)null),
             _ => ("waiting", "Awaiting " + (p.SubmittedBy == PaymentSide.Payer ? (loan.BorrowerId == access.TreasurerId ? "a member" : "treasurer") : borrower)),
         };
@@ -106,4 +110,6 @@ public class PaymentDetailViewModel
     public required bool CanConfirm { get; init; }
     public required bool CanDispute { get; init; }
     public required bool CanCancel { get; init; }
+    // A confirmed payment can be reversed by whoever collects payments for the loan.
+    public bool CanVoid { get; init; }
 }

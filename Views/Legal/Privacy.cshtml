@@ -1,0 +1,71 @@
+@inject IConfiguration Config
+@{
+    ViewData["Title"] = "Privacy notice";
+    var contact = Config["Legal:ContactEmail"];
+}
+<div class="page">
+    <main class="page__body" id="main" tabindex="-1">
+        <div class="page__inner stack legal" style="max-width:720px">
+            <partial name="_Brand" model="(false, false, true)" />
+            <a class="back-link" href="/">@Ui.Icon("chevronLeft")Back to Ubuntu Ledger</a>
+            <div>
+                <p class="eyebrow">Last updated 25 October 2026</p>
+                <h1 class="page-title">Privacy notice</h1>
+                <p class="page-sub">Ubuntu Ledger keeps the record of a lending circle. This explains what we keep about you and why, in plain words. It is written for the South African Protection of Personal Information Act (POPIA).</p>
+            </div>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">What we keep</h2>
+                <ul>
+                    <li><strong>Your name and phone number.</strong> Your treasurer enters them when they invite you, and you confirm your name when you join. This includes people who were invited but have not joined yet.</li>
+                    <li><strong>Your PIN, scrambled.</strong> We never store the PIN itself, only a one-way hash that cannot be turned back into your PIN.</li>
+                    <li><strong>Loans and payments.</strong> Amounts, dates, interest, who recorded or confirmed each entry, and any reason given for a dispute or a correction.</li>
+                    <li><strong>Proof of payment.</strong> Photos or PDFs you choose to upload, such as a bank screenshot. They may show your bank details. Upload only what you are comfortable sharing with the people in your circle.</li>
+                    <li><strong>Sign-in safety records.</strong> How many wrong PINs were typed, and when an account was locked.</li>
+                    <li><strong>That you agreed to these terms</strong>, and when.</li>
+                </ul>
+            </section>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">Why we keep it</h2>
+                <p>To run the circle's ledger: to show who owes what, to let two people confirm each payment, and to keep one trusted record so there are fewer disputes. We do not sell your information, use it for advertising, or use it for anything else.</p>
+            </section>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">Who can see it</h2>
+                <ul>
+                    <li>The <strong>treasurer</strong> of a circle sees every loan and payment in that circle.</li>
+                    <li>A <strong>member</strong> sees only their own loans and payments. If the treasurer borrows, another member has to confirm their payments, so members can see those payments, but not the rest of that loan.</li>
+                    <li>People in other circles cannot see your records.</li>
+                    <li>The people who run the service can see the data in order to keep it working and safe. We use Microsoft Azure to host it and to keep backups.</li>
+                </ul>
+            </section>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">How long we keep it</h2>
+                <p>A ledger is only useful if its history stays. Loans, payments and their corrections are kept for as long as the circle uses Ubuntu Ledger. Corrections never delete anything: a mistake is marked as reversed and stays visible. Backups are kept for a limited time and then replaced.</p>
+            </section>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">Your rights</h2>
+                <p>You may ask to see what we hold about you, to correct it, or to have your personal information removed, and you may object to how it is used. Removing a person does not remove a loan that was made to them, because the other people in the circle need that record to stay correct. In that case the people who run the service can replace your name with a label instead.</p>
+                <p>@if (string.IsNullOrWhiteSpace(contact))
+                {
+                    <text>To use these rights, ask your circle's treasurer, who will pass it on to the people who run the service.</text>
+                }
+                else
+                {
+                    <text>To use these rights, email <a href="mailto:@contact">@contact</a>.</text>
+                }
+                You may also complain to the Information Regulator of South Africa.</p>
+            </section>
+
+            <section class="stack" style="gap:8px">
+                <h2 class="section-title">Keeping it safe</h2>
+                <p>Sign-in needs your phone number and a PIN. Five wrong PINs lock the account for fifteen minutes. Proof files are never public: only people who may see that loan can open them. The connection is encrypted. No system is perfect, so if you think someone else has your PIN, tell your treasurer and ask for a reset.</p>
+            </section>
+
+            <p class="small muted">This notice is a plain-language summary and may be updated as the service grows. We will say so on this page when it changes.</p>
+        </div>
+    </main>
+</div>

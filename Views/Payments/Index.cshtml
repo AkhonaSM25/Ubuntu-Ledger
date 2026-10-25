@@ -42,6 +42,13 @@
                 <span class="row__end">@Ui.Chip(r.Chip, r.ChipLabel)<span class="row__amt">@Format.Zar(r.Payment.Amount)</span></span>
                 <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
             </a>
+            @if (r.NudgeUrl is not null)
+            {
+                @* A sibling of the row, not inside it: a link cannot sit inside a link. *@
+                <div class="row-actions">
+                    <a class="btn btn--secondary btn--xs" href="@r.NudgeUrl" target="_blank" rel="noopener">@Ui.Icon("mail", 18)Remind on WhatsApp<span class="sr-only"> about @r.Headline</span></a>
+                </div>
+            }
         }
         @if (rows.Count == 0)
         {

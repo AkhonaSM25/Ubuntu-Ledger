@@ -13,7 +13,7 @@
             </div>
             <p class="login__foot">Built for communities that grow together.</p>
         </section>
-        <section class="login__form-wrap">
+        <section class="login__form-wrap" id="main" tabindex="-1">
             <form class="login__form form" method="post" asp-action="Login">
                 <input type="hidden" asp-for="ReturnUrl" />
                 <div>
@@ -29,19 +29,23 @@
                 </label>
                 <label class="field">
                     Your PIN
-                    <input class="input" asp-for="Pin" type="password" inputmode="numeric" placeholder="4 to 6 digits" autocomplete="current-password" />
+                    <input class="input" asp-for="Pin" type="password" inputmode="numeric" placeholder="Your PIN" autocomplete="current-password" />
                     <span asp-validation-for="Pin"></span>
                 </label>
-                <div class="field">
-                    <span>Try it as</span>
-                    <div class="segmented" role="group" aria-label="Demo account">
-                        <button type="button" class="seg-btn seg-btn--48" data-demo-phone="082 555 0148" aria-pressed="true">Treasurer</button>
-                        <button type="button" class="seg-btn seg-btn--48" data-demo-phone="071 445 1992" aria-pressed="false">Member</button>
+                @if (Model.ShowDemo)
+                {
+                    <div class="field">
+                        <span>Try it as</span>
+                        <div class="segmented" role="group" aria-label="Demo account">
+                            <button type="button" class="seg-btn seg-btn--48" data-demo-phone="082 555 0148" aria-pressed="true">Treasurer</button>
+                            <button type="button" class="seg-btn seg-btn--48" data-demo-phone="071 445 1992" aria-pressed="false">Member</button>
+                        </div>
+                        <span class="field__help">Demo accounts. The PIN for both is 1234.</span>
                     </div>
-                    <span class="field__help">Demo accounts. The PIN for both is 1234.</span>
-                </div>
+                }
                 <button type="submit" class="btn btn--primary" style="font-size:16px">Sign in@(Ui.Icon("chevronRight", 18, 2.2))</button>
                 <p class="login__note">@Ui.Icon("shield", 18, 1.9)Only members of your circle can see these records.</p>
+                <p class="small muted">Invited to a circle? Open the link your treasurer sent you on WhatsApp. By signing in you agree to the <a href="/terms">terms</a> and the <a href="/privacy">privacy notice</a>.</p>
             </form>
         </section>
     </div>

@@ -65,9 +65,10 @@
         @Ui.Icon("updown", 18)
     </a>
 
-    <main class="main">
+    <main class="main" id="main" tabindex="-1">
         <div class="main__inner stack">
             @RenderBody()
+            <p class="small muted legal-links"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
         </div>
     </main>
 

@@ -10,7 +10,7 @@
 <div>
     <p class="eyebrow">@access.Circle.Name</p>
     <h1 class="page-title">Invite someone</h1>
-    <p class="page-sub">Only people you add can join. They accept the invite in their own app.</p>
+    <p class="page-sub">Only people you add can join. Send them their invite on WhatsApp: the link lets them set a PIN and join. If they already have an account, the invite shows on their circles page.</p>
 </div>
 <div class="split">
     <form class="card card--pad form split__half" method="post" asp-action="Invite" asp-route-circleId="@circleId">
@@ -41,6 +41,10 @@
                 @Ui.Avatar(x.Name.Any(char.IsLetter) ? PersonExtensions.InitialsOf(x.Name) : "?")
                 <span class="row__main"><span class="row__title ellipsis">@x.Name</span><span class="row__sub">@PhoneNumber.Format(x.Phone)</span></span>
                 @Ui.Chip("invited")
+                @if (Model.ShareLinks.TryGetValue(x.Id, out var whatsapp))
+                {
+                    <a class="btn btn--secondary btn--xs" href="@whatsapp" target="_blank" rel="noopener">@Ui.Icon("mail", 18)WhatsApp<span class="sr-only"> invite to @x.Name</span></a>
+                }
                 <form class="inline-form" method="post" asp-action="CancelInvite" asp-route-circleId="@circleId" asp-route-id="@x.Id">
                     <button type="submit" class="icon-btn" aria-label="Cancel invite for @x.Name">@Ui.Icon("close")</button>
                 </form>

@@ -1,0 +1,46 @@
+@model JoinViewModel
+@{
+    ViewData["Title"] = "Join " + Model.CircleName;
+}
+<div class="page">
+    <div class="login">
+        <section class="login__hero geo-host">
+            @Ui.Geo(dark: true)
+            <div class="login__brand"><partial name="_Brand" model="(false, true, true)" /></div>
+            <div>
+                <h1>You are invited to <span>@Model.CircleName</span></h1>
+                <p class="login__lede">@Model.InvitedBy added your number to this lending circle. Choose a PIN and you are in.</p>
+            </div>
+            <p class="login__foot">Only people the treasurer adds can join.</p>
+        </section>
+        <section class="login__form-wrap" id="main" tabindex="-1">
+            <form class="login__form form" method="post" asp-antiforgery="true">
+                <div>
+                    <p class="login__eyebrow">SAWUBONA</p>
+                    <h2 class="login__title">Join your circle</h2>
+                    <p class="page-sub" style="margin-top:8px">Your number: <strong>@Model.Phone</strong></p>
+                </div>
+                <div asp-validation-summary="ModelOnly"></div>
+                <label class="field">
+                    Your name
+                    <input class="input" asp-for="Name" autocomplete="name" maxlength="100" />
+                </label>
+                <label class="field">
+                    Choose a 6-digit PIN
+                    <input class="input" asp-for="Pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" aria-describedby="join-pin-help" />
+                    <span class="field__help" id="join-pin-help">Six digits you will remember. Not 123456 or 111111.</span>
+                </label>
+                <label class="field">
+                    Type the PIN again
+                    <input class="input" asp-for="ConfirmPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" />
+                </label>
+                <label class="check">
+                    <input type="checkbox" asp-for="Consent" />
+                    <span>I agree to the <a href="/terms" target="_blank" rel="noopener">terms</a> and the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a>.</span>
+                </label>
+                <button type="submit" class="btn btn--primary" style="font-size:16px"><span>Join @Model.CircleName</span>@Ui.Icon("chevronRight", 18, 2.2)</button>
+                <p class="login__note">@Ui.Icon("shield", 18, 1.9)Only members of your circle can see these records.</p>
+            </form>
+        </section>
+    </div>
+</div>

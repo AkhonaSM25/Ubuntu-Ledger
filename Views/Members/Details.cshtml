@@ -19,7 +19,35 @@
         <a class="btn btn--primary btn--sm" asp-controller="Loans" asp-action="Create" asp-route-circleId="@circleId" asp-route-borrowerId="@p.Id">@Ui.Icon("plus", 18, 2.1)New loan</a>
     </div>
 </section>
+@if (Model.ResetLink is not null)
+{
+    <section class="card card--pad form" aria-labelledby="reset-link-title">
+        <div>
+            <h2 class="section-title" id="reset-link-title">PIN reset link for @p.FirstName</h2>
+            <p class="small muted" style="margin-top:4px">Send it only to @p.FirstName. It works once and expires in two days. @p.FirstName chooses the new PIN, so you never see it. This link is shown once: if you lose it, make a new one.</p>
+        </div>
+        <label class="field">
+            <span>Link</span>
+            <input class="input" readonly value="@Model.ResetLink" data-select />
+        </label>
+        <div class="form-actions" style="justify-content:flex-start">
+            <a class="btn btn--primary" href="@Model.ResetWhatsAppUrl" target="_blank" rel="noopener">@Ui.Icon("mail", 20)Send on WhatsApp</a>
+        </div>
+    </section>
+}
 <partial name="_StatGrid" model="Model.Stats" />
+@if (Model.CanResetPin)
+{
+    <section class="card card--pad">
+        <details class="corrections">
+            <summary>@p.FirstName forgot their PIN?</summary>
+            <form method="post" asp-action="ResetPin" asp-route-circleId="@circleId" asp-route-personId="@p.Id" class="form">
+                <p class="small muted" style="margin:0">Make a one-time link and send it to @p.FirstName. They pick a new PIN themselves.</p>
+                <div><button type="submit" class="btn btn--secondary">Make a reset link</button></div>
+            </form>
+        </details>
+    </section>
+}
 <div class="two-col">
     <section class="card">
         <div class="card__head"><h2 class="section-title">Loan history</h2></div>

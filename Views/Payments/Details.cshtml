@@ -7,12 +7,13 @@
     ViewData["Nav"] = "payments";
     Layout = "_CircleLayout";
     var circleId = access.Circle.Id;
-    var done = p.Status switch { PaymentStatus.Confirmed => 3, PaymentStatus.Cancelled => 1, _ => 1 };
+    var done = p.Status switch { PaymentStatus.Confirmed or PaymentStatus.Voided => 3, _ => 1 };
     var isImage = p.ProofContentType?.StartsWith("image/") == true;
     var statusText = p.Status switch
     {
         PaymentStatus.Confirmed => "Confirmed by both. It counts toward the balance.",
         PaymentStatus.Cancelled => "Cancelled. It does not count.",
+        PaymentStatus.Voided => "Reversed by the collector. It no longer counts, and stays here as a record.",
         PaymentStatus.Disputed => "Disputed. The balance has not changed.",
         _ => "Waiting for confirmation. The balance has not changed.",
     };
@@ -35,7 +36,7 @@
             @if (Model.Summary is { } figures)
             {
                 <div class="kv__row"><span>Balance now</span><span>@Format.Zar(figures.Balance)</span></div>
-                @if (p.Status != PaymentStatus.Confirmed && p.Status != PaymentStatus.Cancelled)
+                @if (p.Status is PaymentStatus.Pending or PaymentStatus.Disputed)
                 {
                     <div class="kv__row kv__row--strong"><span>Balance if confirmed</span><span>@Format.Zar(Math.Max(0, figures.Balance - p.Amount))</span></div>
                 }
@@ -44,6 +45,10 @@
         @if (p.Status == PaymentStatus.Disputed && !string.IsNullOrEmpty(p.DisputeReason))
         {
             <div class="notice notice--overdue">@Ui.Icon("alert")<span>Disputed: @p.DisputeReason</span></div>
+        }
+        @if (p.Status == PaymentStatus.Voided)
+        {
+            <div class="notice notice--overdue">@Ui.Icon("alert")<span>Reversed on @Format.Date(DateOnly.FromDateTime(p.VoidedAt ?? p.RecordedAt)): @p.VoidReason</span></div>
         }
         <div class="field">
             <span>Proof of payment</span>
@@ -60,6 +65,12 @@
                 <a class="btn btn--secondary btn--xs" href="@Url.Action("Proof", new { circleId, id = p.Id })" target="_blank" rel="noopener">@Ui.Icon("download", 18)Open @p.ProofName</a>
             }
         </div>
+        @if (r.NudgeUrl is not null)
+        {
+            <div class="form-actions" style="justify-content:flex-start">
+                <a class="btn btn--secondary" href="@r.NudgeUrl" target="_blank" rel="noopener">@Ui.Icon("mail", 20)Remind on WhatsApp</a>
+            </div>
+        }
         @if (Model.CanConfirm || Model.CanDispute || Model.CanCancel)
         {
             <div class="form-actions" style="justify-content:flex-start">
@@ -76,6 +87,20 @@
                     </form>
                 }
             </div>
+        }
+        @if (Model.CanVoid)
+        {
+            <form method="post" asp-action="Void" asp-route-circleId="@circleId" asp-route-id="@p.Id" class="form divider-top">
+                <div>
+                    <h2 class="section-title">Entered by mistake?</h2>
+                    <p class="small muted" style="margin-top:4px">Reversing a payment does not delete it. It stays in the loan's ledger with your reason, and the balance goes back up.</p>
+                </div>
+                <label class="field">
+                    <span>Why is it being reversed?</span>
+                    <input class="input" name="reason" maxlength="300" required placeholder="e.g. Recorded against the wrong loan" />
+                </label>
+                <div><button type="submit" class="btn btn--danger">Reverse this payment</button></div>
+            </form>
         }
         @if (Model.CanDispute)
         {

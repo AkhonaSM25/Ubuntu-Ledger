@@ -38,6 +38,10 @@
         <h2 class="section-title">Invitations</h2>
         <span class="count-pill count-pill--warn">@Model.Invitations.Count</span>
     </div>
+    @if (Model.Invitations.Count > 0)
+    {
+        <p class="small muted" style="padding:0 20px 8px">By accepting an invitation you agree to the <a href="/terms">terms</a> and the <a href="/privacy">privacy notice</a>.</p>
+    }
     @foreach (var i in Model.Invitations)
     {
         <div class="row" style="flex-wrap:wrap;gap:14px;padding:16px 20px">

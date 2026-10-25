@@ -9,7 +9,7 @@ namespace UbuntuLedger.Controllers;
 
 // Members and invites. Treasurer only: members never see each other's balances.
 [Route("circles/{circleId:int}/members")]
-public class MembersController(CircleAccessService access, LoanService loans, CircleService circles, LedgerDbContext db) : CircleControllerBase(access)
+public class MembersController(CircleAccessService access, LoanService loans, CircleService circles, AccountService accounts, LedgerDbContext db) : CircleControllerBase(access)
 {
     private static readonly string[] Filters = ["all", "ok", "soon", "overdue"];
 
@@ -67,14 +67,35 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         var running = 0m;
         var timeline = events.Select(e => new TimelineEntry(e.Date, e.Pay, e.Amount, e.Title, e.Sub, running += e.Amount)).Reverse().ToList();
 
-        return View(new MemberDetailViewModel { Member = summary, MemberSince = membership.JoinedOn, Stats = stats, Timeline = timeline });
+        // The reset link is handed over once: it is in TempData only for the page that follows the reset.
+        var resetLink = TempData["ResetLink"] as string;
+        var canReset = membership.PersonId != Access.Me.Id && await db.Memberships.CountAsync(m => m.PersonId == personId) == 1;
+        return View(new MemberDetailViewModel
+        {
+            Member = summary, MemberSince = membership.JoinedOn, Stats = stats, Timeline = timeline,
+            CanResetPin = canReset,
+            ResetLink = resetLink,
+            ResetWhatsAppUrl = resetLink is null ? null : WhatsApp.Link(membership.Person.Phone,
+                $"Hi {membership.Person.FirstName}, here is your link to set a new PIN for Ubuntu Ledger: {resetLink} It works once and expires in {AccountService.ResetLinkLife.TotalHours:0} hours."),
+        });
+    }
+
+    // Forgot PIN: the treasurer makes a one-time link and sends it to the member, who picks the new PIN themselves.
+    [HttpPost("{personId:int}/reset-pin"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPin(int personId)
+    {
+        if (!Access.IsTreasurer) return NotFound();
+        var (token, error) = await accounts.CreatePinResetAsync(Access, personId);
+        if (token is null) Toast(error!);
+        else TempData["ResetLink"] = Url.Action("ResetPin", "Account", new { token }, Request.Scheme);
+        return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, personId });
     }
 
     [HttpGet("invite")]
     public async Task<IActionResult> Invite()
     {
         if (!Access.IsTreasurer) return NotFound();
-        return View(new InviteViewModel { Pending = await circles.PendingForCircleAsync(Access.Circle.Id) });
+        return View(await InviteModelAsync(new InviteViewModel()));
     }
 
     [HttpPost("invite"), ValidateAntiForgeryToken]
@@ -92,8 +113,7 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
             }
             ModelState.AddModelError(nameof(model.Phone), result.Error!);
         }
-        model.Pending = await circles.PendingForCircleAsync(Access.Circle.Id);
-        return View(model);
+        return View(await InviteModelAsync(model));
     }
 
     [HttpPost("invite/{id:int}/cancel"), ValidateAntiForgeryToken]
@@ -102,6 +122,20 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         var result = await circles.CancelInviteAsync(Access, id);
         if (!result.Succeeded) Toast(result.Error!);
         return RedirectToAction(nameof(Invite));
+    }
+
+    // The waiting invites, each with a "send on WhatsApp" link that carries the join link.
+    private async Task<InviteViewModel> InviteModelAsync(InviteViewModel model)
+    {
+        model.Pending = await circles.PendingForCircleAsync(Access.Circle.Id);
+        model.ShareLinks = model.Pending.Where(i => i.Token is not null).ToDictionary(i => i.Id, i =>
+        {
+            var join = Url.Action("Join", "Account", new { token = i.Token }, Request.Scheme);
+            var greeting = i.Name.Any(char.IsLetter) ? $"Hi {i.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]}, " : "Hi, ";
+            return WhatsApp.Link(i.Phone,
+                $"{greeting}{Access.Me.FirstName} invited you to join \"{Access.Circle.Name}\" on Ubuntu Ledger. Open this link to set your PIN and join: {join}");
+        });
+        return model;
     }
 
     public static string StatusKey(LoanStatus s) => s switch

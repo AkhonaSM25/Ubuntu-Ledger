@@ -5,7 +5,7 @@ public record StoredProof(string Path, string FileName, string ContentType);
 
 // Keeps proof-of-payment files outside wwwroot, so nothing is public. They are only ever served by
 // PaymentsController, after it has checked that the signed-in person can see the loan.
-public class ProofStore(IWebHostEnvironment env)
+public class ProofStore(StoragePaths paths)
 {
     public const long MaxBytes = 5 * 1024 * 1024;
 
@@ -17,7 +17,7 @@ public class ProofStore(IWebHostEnvironment env)
         [".pdf"] = "application/pdf",
     };
 
-    private string Folder => System.IO.Path.Combine(env.ContentRootPath, "App_Data", "proofs");
+    private string Folder => paths.Proofs;
 
     public async Task<(StoredProof? Proof, string? Error)> SaveAsync(IFormFile file, CancellationToken ct = default)
     {

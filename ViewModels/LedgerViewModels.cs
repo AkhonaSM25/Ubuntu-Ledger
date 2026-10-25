@@ -37,11 +37,19 @@ public class MemberDetailViewModel
     public required DateOnly MemberSince { get; init; }
     public required IReadOnlyList<StatCard> Stats { get; init; }
     public required IReadOnlyList<TimelineEntry> Timeline { get; init; }
+
+    // Treasurer only: false for the treasurer's own page and for people who are in more than one circle.
+    public bool CanResetPin { get; init; }
+    // Set for one page view right after the treasurer made a reset link.
+    public string? ResetLink { get; init; }
+    public string? ResetWhatsAppUrl { get; init; }
 }
 
 public class LoansViewModel
 {
     public required IReadOnlyList<LoanSummary> Loans { get; init; }
+    // Loans that were voided: on record, but not counted.
+    public IReadOnlyList<LoanSummary> Voided { get; init; } = [];
 }
 
 public record LedgerRow(DateOnly Date, string Title, string Sub, decimal Amount, bool IsCredit, decimal Balance);

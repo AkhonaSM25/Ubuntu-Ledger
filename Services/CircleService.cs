@@ -24,9 +24,19 @@ public class CircleService(LedgerDbContext db, LedgerClock clock)
             .ToListAsync();
     }
 
-    public Task<List<Invitation>> PendingForCircleAsync(int circleId) =>
-        db.Invitations.Where(i => i.CircleId == circleId && i.Status == InvitationStatus.Pending)
+    // Invites from before join links existed get their link the first time the treasurer looks at them.
+    public async Task<List<Invitation>> PendingForCircleAsync(int circleId)
+    {
+        var pending = await db.Invitations.Where(i => i.CircleId == circleId && i.Status == InvitationStatus.Pending)
             .OrderBy(i => i.CreatedAt).ToListAsync();
+        var untokened = pending.Where(i => i.Token is null).ToList();
+        if (untokened.Count > 0)
+        {
+            foreach (var i in untokened) i.Token = Tokens.New();
+            await db.SaveChangesAsync();
+        }
+        return pending;
+    }
 
     public async Task<OperationResult> CreateAsync(Person me, string name, IReadOnlyList<(string Name, string Phone)> people)
     {
@@ -82,8 +92,13 @@ public class CircleService(LedgerDbContext db, LedgerClock clock)
         if (invite is null) return OperationResult.Fail("That invitation is no longer available.");
 
         invite.Status = accept ? InvitationStatus.Accepted : InvitationStatus.Declined;
-        if (accept && !await db.Memberships.AnyAsync(m => m.CircleId == invite.CircleId && m.PersonId == me.Id))
-            db.Memberships.Add(new Membership { CircleId = invite.CircleId, PersonId = me.Id, Role = CircleRole.Member, JoinedOn = clock.Today });
+        if (accept)
+        {
+            // Accepting is the person's agreement to the terms and the privacy notice shown beside the button.
+            me.ConsentedAt ??= DateTime.UtcNow;
+            if (!await db.Memberships.AnyAsync(m => m.CircleId == invite.CircleId && m.PersonId == me.Id))
+                db.Memberships.Add(new Membership { CircleId = invite.CircleId, PersonId = me.Id, Role = CircleRole.Member, JoinedOn = clock.Today });
+        }
         await db.SaveChangesAsync();
         return OperationResult.Ok(invite.CircleId);
     }
@@ -95,5 +110,6 @@ public class CircleService(LedgerDbContext db, LedgerClock clock)
         InvitedById = by.Id,
         Status = InvitationStatus.Pending,
         CreatedAt = DateTime.UtcNow,
+        Token = Tokens.New(),
     };
 }

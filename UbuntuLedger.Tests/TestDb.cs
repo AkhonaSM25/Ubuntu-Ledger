@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using UbuntuLedger.Data;
 using UbuntuLedger.Models;
 using UbuntuLedger.Services;
@@ -11,6 +12,14 @@ namespace UbuntuLedger.Tests;
 /// A throw-away SQLite in-memory database with the real EF model, the demo seed and the real services.
 /// "Today" is pinned to 15 Oct 2026, the date the demo data was written for. Each test builds its own instance.
 /// </summary>
+/// <summary>A clock the tests can move forward, for lockouts and expiring links.</summary>
+public sealed class TestTime : TimeProvider
+{
+    private DateTimeOffset _now = new(2026, 10, 15, 9, 0, 0, TimeSpan.Zero);
+    public override DateTimeOffset GetUtcNow() => _now;
+    public void Advance(TimeSpan by) => _now += by;
+}
+
 public sealed class TestDb : IDisposable
 {
     public static readonly DateOnly Today = new(2026, 10, 15);
@@ -22,6 +31,8 @@ public sealed class TestDb : IDisposable
     public LoanService Loans { get; }
     public LoanRequestService Requests { get; }
     public CircleAccessService Access { get; }
+    public TestTime Time { get; } = new();
+    public AccountService Accounts { get; }
 
     private TestDb()
     {
@@ -33,6 +44,7 @@ public sealed class TestDb : IDisposable
         Loans = new LoanService(Db, Clock);
         Requests = new LoanRequestService(Db, Loans);
         Access = new CircleAccessService(Db);
+        Accounts = new AccountService(Db, Clock, Time, NullLogger<AccountService>.Instance);
     }
 
     public static async Task<TestDb> SeededAsync()
