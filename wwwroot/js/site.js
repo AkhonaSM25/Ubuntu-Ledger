@@ -51,11 +51,75 @@
   if (search && search.value) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
 
   // ---------- confirmation dialogs ----------
+  // Focus moves into the dialog, Tab stays inside it, Escape closes it, and focus goes back to the form behind it.
   $$('[data-dialog]').forEach((overlay) => {
-    const close = () => overlay.remove();
+    const dialog = $('[role=dialog]', overlay) || overlay;
+    const form = overlay.closest('form');
+    const focusable = () => $$('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog)
+      .filter((el) => el.offsetParent !== null);
+    const onKey = (e) => {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) { e.preventDefault(); return; }
+      const first = items[0], last = items[items.length - 1];
+      const outside = !dialog.contains(document.activeElement);
+      if (e.shiftKey && (outside || document.activeElement === first)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (outside || document.activeElement === last)) { e.preventDefault(); first.focus(); }
+    };
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      const back = form && $$('input:not([type=hidden]), select, textarea', form).find((el) => el.offsetParent !== null);
+      if (back) back.focus();
+    }
+    document.addEventListener('keydown', onKey);
     $$('[data-close-dialog]', overlay).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); close(); }));
     overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    const start = $('[autofocus]', dialog) || focusable()[0];
+    if (start) start.focus();
+  });
+
+  // ---------- error messages: tie each one to its field ----------
+  // The server prints the message next to the field. This lets a screen reader read it with the field,
+  // and puts the keyboard on the first field that needs fixing.
+  $$('[data-valmsg-for]').forEach((msg) => {
+    if (!msg.textContent.trim()) return;
+    const field = document.getElementsByName(msg.getAttribute('data-valmsg-for'))[0];
+    if (!field) return;
+    if (!msg.id) msg.id = 'err-' + msg.getAttribute('data-valmsg-for').replace(/[^\w-]/g, '_');
+    const ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (!ids.includes(msg.id)) ids.push(msg.id);
+    field.setAttribute('aria-describedby', ids.join(' '));
+    field.setAttribute('aria-invalid', 'true');
+  });
+  $$('.validation-summary-errors').forEach((el) => el.setAttribute('role', 'alert'));
+  const firstInvalid = $('[aria-invalid="true"]');
+  if (firstInvalid && document.activeElement === document.body) firstInvalid.focus();
+
+  // ---------- fields that select their text when tapped (links to copy) ----------
+  $$('[data-select]').forEach((el) => el.addEventListener('focus', () => el.select()));
+
+  // ---------- one tap, one submission ----------
+  // On a slow connection people tap twice. The buttons switch off after the first tap. The server also refuses
+  // an identical payment that is still waiting, in case the page is submitted twice some other way.
+  $$('form').filter((f) => f.method === 'post').forEach((form) => {
+    form.addEventListener('submit', (e) => {
+      if (form.dataset.submitting === 'true') { e.preventDefault(); return; }
+      form.dataset.submitting = 'true';
+      // Switch off after the browser has read the form: a disabled button's own value is not sent.
+      setTimeout(() => {
+        $$('button[type=submit], button:not([type]), input[type=submit]', form).forEach((b) => { b.disabled = true; b.setAttribute('aria-busy', 'true'); });
+      }, 0);
+    });
+  });
+  // Coming back with the browser's Back button must not leave a form switched off.
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    $$('form[data-submitting]').forEach((form) => {
+      delete form.dataset.submitting;
+      $$('button[aria-busy]', form).forEach((b) => { b.disabled = false; b.removeAttribute('aria-busy'); });
+    });
   });
 
   // ---------- contact picker (only where the browser offers one) ----------

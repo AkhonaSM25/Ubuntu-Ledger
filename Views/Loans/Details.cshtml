@@ -11,6 +11,7 @@
     var (noticeText, tone, icon) = s.Status switch
     {
         LoanStatus.Paid => ("This loan is fully paid. Thank you!", "paid", "check"),
+        LoanStatus.Voided => ($"This loan was voided on {Format.Date(DateOnly.FromDateTime(loan.VoidedAt!.Value))}. Reason: {loan.VoidReason}. It stays here as a record and does not count toward any balance.", "ok", "close"),
         LoanStatus.Overdue => ($"{Format.Zar(s.NextAmount)} was due on {Format.Date(s.NextDue!.Value)} ({Format.Plural(s.Days, "day")} overdue).", "overdue", "alert"),
         _ => ($"Next payment {Format.Zar(s.NextAmount)} is due {Format.Date(s.NextDue!.Value)}" + (s.Days == 0 ? " (today)." : $" (in {Format.Plural(s.Days, "day")})."),
               s.Status == LoanStatus.DueSoon ? "soon" : "ok", s.Status == LoanStatus.DueSoon ? "clock" : "cal"),
@@ -21,6 +22,7 @@
         ("Amount paid", Format.Zar(s.Paid), "var(--ok)"), ("Remaining balance", Format.Zar(s.Balance), "var(--green)"),
     ];
     var interestText = loan.InterestType == InterestType.Simple ? "simple" : "monthly";
+    var confirmedPayments = s.Confirmed.OrderByDescending(r => r.Date).ThenByDescending(r => r.Id).ToList();
 }
 <a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")All loans</a>
 <div class="page-head">
@@ -63,6 +65,42 @@
         </div>
         <a class="btn btn--secondary btn--xs" asp-action="Export" asp-route-circleId="@circleId" asp-route-id="@loan.Id">@Ui.Icon("download", 18)Export CSV</a>
     </div>
+    @if (access.IsTreasurer && !s.IsVoided)
+    {
+        @* Corrections: nothing is deleted. A reversed payment or a voided loan stays in the ledger with its reason. *@
+        <div class="card__foot-note">
+            <details class="corrections">
+                <summary>Fix a mistake</summary>
+                <div class="form">
+                    @if (confirmedPayments.Count > 0)
+                    {
+                        <div class="field">
+                            <span>Recorded a payment wrongly? Open it to reverse it.</span>
+                            @foreach (var r in confirmedPayments)
+                            {
+                                <a class="btn btn--secondary btn--xs" style="align-self:flex-start" asp-controller="Payments" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@r.Id">@Format.Zar(r.Amount) on @Format.Date(r.Date)</a>
+                            }
+                        </div>
+                    }
+                    @if (confirmedPayments.Count == 0)
+                    {
+                        <form method="post" asp-action="Void" asp-route-circleId="@circleId" asp-route-id="@loan.Id" class="form">
+                            <label class="field">
+                                <span>Recorded this loan by mistake? Say why you are voiding it.</span>
+                                <input class="input" name="reason" maxlength="300" required placeholder="e.g. Wrong member chosen" />
+                                <span class="field__help">The loan stays in the history, marked as voided, and no longer counts toward any total.</span>
+                            </label>
+                            <div><button type="submit" class="btn btn--danger">Void this loan</button></div>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="small muted" style="margin:0">To void the whole loan, first reverse its @Format.Plural(confirmedPayments.Count, "confirmed payment").</p>
+                    }
+                </div>
+            </details>
+        </div>
+    }
     <div role="table" aria-label="Transaction ledger" class="only-desk">
         <div role="row" class="table-head">
             <span role="columnheader" style="width:120px">Date</span><span role="columnheader" style="flex:1">Transaction</span>

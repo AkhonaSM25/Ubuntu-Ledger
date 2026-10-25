@@ -5,7 +5,7 @@ using UbuntuLedger.Models;
 namespace UbuntuLedger.Services;
 
 // The signed-in person's place in one circle. Treasurers see and change everything; members see only their own loans.
-public record CircleAccess(Circle Circle, Person Me, CircleRole Role, int TreasurerId)
+public record CircleAccess(Circle Circle, Person Me, CircleRole Role, int TreasurerId, string? TreasurerPhone = null)
 {
     public bool IsTreasurer => Role == CircleRole.Treasurer;
 
@@ -27,9 +27,9 @@ public class CircleAccessService(LedgerDbContext db)
             .Include(x => x.Person)
             .FirstOrDefaultAsync(x => x.CircleId == circleId && x.PersonId == personId);
         if (m is null) return null;
-        var treasurerId = await db.Memberships
+        var treasurer = await db.Memberships
             .Where(x => x.CircleId == circleId && x.Role == CircleRole.Treasurer)
-            .Select(x => x.PersonId).FirstOrDefaultAsync();
-        return new CircleAccess(m.Circle, m.Person, m.Role, treasurerId);
+            .Select(x => new { x.PersonId, x.Person.Phone }).FirstOrDefaultAsync();
+        return new CircleAccess(m.Circle, m.Person, m.Role, treasurer?.PersonId ?? 0, treasurer?.Phone);
     }
 }

@@ -64,11 +64,18 @@ namespace UbuntuLedger.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Token")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CircleId");
 
                     b.HasIndex("InvitedById");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
 
                     b.HasIndex("Phone", "Status");
 
@@ -113,6 +120,16 @@ namespace UbuntuLedger.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Term")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("VoidedById")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -212,7 +229,16 @@ namespace UbuntuLedger.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("ConsentedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateOnly>("CreatedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FailedPinAttempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -225,7 +251,17 @@ namespace UbuntuLedger.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PinChangedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PinHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PinResetExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PinResetTokenHash")
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -295,6 +331,16 @@ namespace UbuntuLedger.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SubmittedBy")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("VoidedById")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

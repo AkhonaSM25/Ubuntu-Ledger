@@ -1,0 +1,28 @@
+@model ResetPinViewModel
+@{
+    ViewData["Title"] = "Set a new PIN";
+}
+<div class="page">
+    <main class="page__body" id="main" tabindex="-1">
+        <div class="page__inner stack" style="max-width:480px">
+            <partial name="_Brand" model="(false, false, true)" />
+            <div>
+                <h1 class="page-title">Set a new PIN, @Model.Name</h1>
+                <p class="page-sub">Your treasurer sent you this link. It works once. Choose six digits that only you know.</p>
+            </div>
+            <form class="card card--pad form" method="post" asp-antiforgery="true">
+                <div asp-validation-summary="ModelOnly"></div>
+                <label class="field">
+                    New 6-digit PIN
+                    <input class="input" asp-for="Pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" aria-describedby="reset-pin-help" />
+                    <span class="field__help" id="reset-pin-help">Not 123456 or 111111.</span>
+                </label>
+                <label class="field">
+                    Type it again
+                    <input class="input" asp-for="ConfirmPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" />
+                </label>
+                <button type="submit" class="btn btn--primary">Save my new PIN</button>
+            </form>
+        </div>
+    </main>
+</div>

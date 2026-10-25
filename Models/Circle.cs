@@ -45,4 +45,9 @@ public class Invitation
     public Person InvitedBy { get; set; } = null!;
     public InvitationStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Secret part of the join link sent over WhatsApp. Whoever holds the link can set a PIN for this phone number,
+    // so it is long and random. Older invites get one the first time the treasurer opens the invite page.
+    [StringLength(32)]
+    public string? Token { get; set; }
 }

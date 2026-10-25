@@ -16,6 +16,19 @@ public class Person
 
     public string? PinHash { get; set; }
 
+    // Sign-in protection: five wrong PINs in a row lock the account for a while (see AccountService).
+    public int FailedPinAttempts { get; set; }
+    public DateTime? LockedUntil { get; set; }
+    public DateTime? PinChangedAt { get; set; }
+
+    // A one-time link the treasurer hands over when a member forgets their PIN. Only a hash of it is stored.
+    [StringLength(64)]
+    public string? PinResetTokenHash { get; set; }
+    public DateTime? PinResetExpiresAt { get; set; }
+
+    // When the person agreed to the terms and the privacy notice.
+    public DateTime? ConsentedAt { get; set; }
+
     public DateOnly CreatedOn { get; set; }
 
     public ICollection<Membership> Memberships { get; set; } = new List<Membership>();

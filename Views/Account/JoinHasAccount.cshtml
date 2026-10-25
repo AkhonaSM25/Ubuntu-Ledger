@@ -1,0 +1,16 @@
+@model Invitation
+@{
+    ViewData["Title"] = "You already have an account";
+}
+<div class="page">
+    <main class="page__body" id="main" tabindex="-1">
+        <div class="page__inner stack" style="max-width:560px">
+            <partial name="_Brand" model="(false, false, true)" />
+            <div>
+                <h1 class="page-title">You already have an account</h1>
+                <p class="page-sub">@Model.InvitedBy.Name invited this number to join <strong>@Model.Circle.Name</strong>. Sign in, and you will find the invitation on your circles page.</p>
+            </div>
+            <a class="btn btn--primary" href="/login" style="align-self:flex-start">Sign in</a>
+        </div>
+    </main>
+</div>

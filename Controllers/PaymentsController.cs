@@ -14,6 +14,7 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
     public async Task<IActionResult> Index(string? tab)
     {
         var rows = (await loans.PaymentsAsync(Access)).Select(e => PaymentRow.From(Access, e)).ToList();
+        foreach (var r in rows) r.NudgeUrl = NudgeLink(r);
         var open = rows.Where(r => r.Payment.Status is PaymentStatus.Pending or PaymentStatus.Disputed).ToList();
         return View(new ConfirmationsViewModel
         {
@@ -32,6 +33,7 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
         var summary = await loans.FindAsync(Access, entry.Payment.LoanId);   // null when confirming the treasurer's payment
 
         var row = PaymentRow.From(Access, entry);
+        row.NudgeUrl = NudgeLink(row);
         var p = entry.Payment;
         var waiting = p.Status is PaymentStatus.Pending or PaymentStatus.Disputed;
         return View(new PaymentDetailViewModel
@@ -41,6 +43,7 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
             CanConfirm = waiting && LoanService.IsReviewer(Access, entry.Loan.BorrowerId, p),
             CanDispute = p.Status == PaymentStatus.Pending && LoanService.IsReviewer(Access, entry.Loan.BorrowerId, p),
             CanCancel = waiting && LoanService.IsSubmitter(Access, entry.Loan.BorrowerId, p),
+            CanVoid = p.Status == PaymentStatus.Confirmed && LoanService.IsCollector(Access, entry.Loan.BorrowerId),
         });
     }
 
@@ -141,12 +144,46 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
         return RedirectToAction(nameof(Index), new { circleId = Access.Circle.Id });
     }
 
+    // Reverses a confirmed payment that was recorded wrongly. It stays in the loan's ledger, marked as reversed.
+    [HttpPost("{id:int}/void"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Void(int id, string? reason)
+    {
+        var result = await loans.VoidPaymentAsync(Access, id, reason);
+        if (!result.Succeeded)
+        {
+            Toast(result.Error!);
+            return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
+        }
+        Toast("Payment reversed. The balance went back up, and the entry stays in the ledger.");
+        return RedirectToAction("Details", "Loans", new { circleId = Access.Circle.Id, id = result.Id });
+    }
+
     [HttpPost("{id:int}/cancel"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(int id)
     {
         var result = await loans.CancelPaymentAsync(Access, id);
         Toast(result.Succeeded ? "Payment cancelled." : result.Error!);
         return RedirectToAction(nameof(Index), new { circleId = Access.Circle.Id, tab = "others" });
+    }
+
+    // "Remind on WhatsApp" for a payment I submitted that the other person has not confirmed yet. The message
+    // carries a link straight to the payment. Null when it is not my payment or it is no longer waiting.
+    private string? NudgeLink(PaymentRow row)
+    {
+        var p = row.Payment;
+        if (p.Status != PaymentStatus.Pending || !row.IsMine) return null;
+
+        var url = Url.Action(nameof(Details), null, new { circleId = Access.Circle.Id, id = p.Id }, Request.Scheme);
+        if (p.SubmittedBy == PaymentSide.Payer)
+        {
+            // The borrower paid, so the treasurer confirms. On the treasurer's own loan, any other member can,
+            // so the message goes to a chat of the sender's choice.
+            var to = row.Loan.BorrowerId == Access.TreasurerId ? null : Access.TreasurerPhone;
+            return WhatsApp.Link(to,
+                $"Hi, I paid {Format.Zar(p.Amount)} towards loan {row.Loan.Reference} on {Format.Date(p.Date)}. Please confirm you received it on Ubuntu Ledger: {url}");
+        }
+        return WhatsApp.Link(row.Loan.Borrower.Phone,
+            $"Hi {row.Loan.Borrower.FirstName}, I recorded a payment of {Format.Zar(p.Amount)} from you on loan {row.Loan.Reference}. Please confirm it on Ubuntu Ledger: {url}");
     }
 
     // Loans that still have something left to submit, most overdue first.

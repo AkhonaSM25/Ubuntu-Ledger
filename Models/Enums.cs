@@ -33,7 +33,9 @@ public enum LoanStatus
     Paid = 0,
     UpToDate = 1,
     DueSoon = 2,
-    Overdue = 3
+    Overdue = 3,
+    // Reversed by the treasurer. The loan stays in the history but is left out of every total.
+    Voided = 4
 }
 
 // Where a payment is in the two-party confirmation flow. Only Confirmed payments reduce a loan's balance.
@@ -43,7 +45,9 @@ public enum PaymentStatus
     Confirmed = 0,
     Pending = 1,
     Disputed = 2,
-    Cancelled = 3
+    Cancelled = 3,
+    // A payment that was confirmed and later reversed by the collector, with a reason. It no longer counts.
+    Voided = 4
 }
 
 // Who submitted a payment. The other side has to confirm it.

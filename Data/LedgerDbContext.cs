@@ -22,6 +22,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
         b.Entity<Membership>().HasOne(m => m.Person).WithMany(p => p.Memberships).OnDelete(DeleteBehavior.Restrict);
 
         b.Entity<Invitation>().HasIndex(i => new { i.Phone, i.Status });
+        b.Entity<Invitation>().HasIndex(i => i.Token).IsUnique();
         b.Entity<Invitation>().HasOne(i => i.InvitedBy).WithMany().OnDelete(DeleteBehavior.Restrict);
 
         b.Entity<Loan>().HasIndex(l => l.Reference).IsUnique();

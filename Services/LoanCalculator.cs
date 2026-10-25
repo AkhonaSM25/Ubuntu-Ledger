@@ -21,11 +21,12 @@ public record LoanSummary(
     public IEnumerable<Repayment> Confirmed => Loan.Repayments.Where(r => r.Status == PaymentStatus.Confirmed);
 
     // What can still be submitted: the balance less payments already waiting for confirmation.
-    public decimal Available => Math.Max(0, Balance - Pending);
+    public decimal Available => Loan.IsVoided ? 0 : Math.Max(0, Balance - Pending);
 
     // What the borrower should pay next: one instalment, or less if that clears the loan.
     public decimal NextAmount => Math.Min(Instalment, Balance);
-    public bool IsOpen => Balance > 0;
+    public bool IsOpen => Balance > 0 && !Loan.IsVoided;
+    public bool IsVoided => Loan.IsVoided;
 }
 
 public static class LoanCalculator
@@ -47,7 +48,8 @@ public static class LoanCalculator
         var instalment = InstalmentFor(total, loan.Term);
         var paid = loan.Repayments.Where(r => r.Status == PaymentStatus.Confirmed).Sum(r => r.Amount);
         var pending = loan.Repayments.Where(r => r.Status == PaymentStatus.Pending).Sum(r => r.Amount);
-        var balance = Math.Max(0, Math.Round(total - paid, 2));
+        // A voided loan owes nothing; it stays on record, marked as voided.
+        var balance = loan.IsVoided ? 0 : Math.Max(0, Math.Round(total - paid, 2));
         var dues = DueDatesFor(loan.StartDate, loan.Term);
 
         // Payments cover instalments in order; the first uncovered one is the next due date.
@@ -66,6 +68,7 @@ public static class LoanCalculator
                 _ => (LoanStatus.UpToDate, diff),
             };
         }
+        if (loan.IsVoided) status = LoanStatus.Voided;
         var pct = total > 0 ? (int)Math.Min(100, Math.Round(paid / total * 100, MidpointRounding.AwayFromZero)) : 0;
         return new LoanSummary(loan, interest, total, instalment, paid, balance, dues, next, status, days, pct, pending);
     }

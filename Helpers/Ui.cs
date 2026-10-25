@@ -52,6 +52,7 @@ public static class Ui
             "awaiting" => ("Awaiting you", "clock"),
             "waiting" => ("Waiting", "clock"),
             "disputed" => ("Disputed", "alert"),
+            "voided" => ("Voided", "close"),
             _ => ("Member", "user"),
         };
         return new HtmlString($"<span class=\"chip chip--{kind}\">{Html(Icon(icon, 14, 2.4))}{WebUtility.HtmlEncode(label ?? defaultLabel)}</span>");
@@ -64,6 +65,7 @@ public static class Ui
         LoanStatus.Paid => "paid",
         LoanStatus.Overdue => "overdue",
         LoanStatus.DueSoon => "soon",
+        LoanStatus.Voided => "voided",
         _ => "ok",
     };
 

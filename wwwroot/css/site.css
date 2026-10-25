@@ -10,7 +10,8 @@
   --cream: #F1EEE5;
   --ink: #202722;
   --muted: #5F6862;
-  --faint: #6F7872;
+  --faint: #626B65;   /* 4.7:1 on the cream cards (was 4.2:1) */
+  --focus: #0A4027;   /* focus ring: 10:1 on the page and cards */
   --line: #E3E0D7;
   --field: #8F978F;
   --ok: #1B6A41;
@@ -64,7 +65,8 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+[tabindex='-1']:focus { outline: none; }
 h1, h2, p { margin: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--muted); }
@@ -223,7 +225,7 @@ select.input, input[type='date'].input { padding: 0 12px; }
   display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 16px;
   border: 1.5px solid var(--field); border-radius: var(--r-control); background: #fff;
 }
-.affix:focus-within { outline: 3px solid var(--gold); outline-offset: 2px; }
+.affix:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
 .affix--error { border-color: var(--bad); }
 .affix--lg { min-height: 56px; }
 .affix__mark { color: var(--muted); font-weight: 600; }
@@ -500,7 +502,7 @@ a.filter-chip[aria-current='true'] { border-color: var(--green); background: var
 .search input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .seg-radio { display: grid; place-items: center; cursor: pointer; }
 .seg-radio:has(input:checked) { border-color: var(--green); background: var(--green); color: #fff; }
-.seg-radio:has(input:focus-visible) { outline: 3px solid var(--gold); outline-offset: 2px; }
+.seg-radio:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
 .affix input.input-validation-error { color: var(--bad); }
 .chart__bar-wrap { height: 100%; }
 .period { display: flex; align-items: center; gap: 8px; }
@@ -553,3 +555,31 @@ a.filter-chip[aria-current='true'] { border-color: var(--green); background: var
 .dropzone__text { font-size: 13px; color: var(--muted); }
 .dropzone input[type='file'] { max-width: 100%; margin-top: 8px; font-size: 14px; }
 .proof-img { max-width: 100%; max-height: 360px; border-radius: 12px; border: 1px solid var(--line); object-fit: contain; align-self: flex-start; }
+
+/* ---------- accessibility ---------- */
+.skip-link {
+  position: absolute; left: 12px; top: -64px; z-index: 100; padding: 12px 16px; border-radius: var(--r-control);
+  background: var(--green); color: #fff; font-weight: 700; text-decoration: none;
+}
+.skip-link:focus { top: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- checkboxes, corrections, legal pages, WhatsApp rows ---------- */
+.check { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; font-size: 14px; font-weight: 500; }
+.check input { flex: 0 0 24px; width: 24px; height: 24px; margin: 0; accent-color: var(--green); }
+.check a { color: var(--green); font-weight: 600; }
+.row-actions { display: flex; padding: 0 var(--row-pad-x) 14px; }
+.card__foot-note { padding: 0 var(--row-pad-x) 16px; }
+.corrections > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--green); }
+.corrections[open] > summary { margin-bottom: 8px; }
+.card > .corrections { padding: 4px var(--row-pad-x); }
+.chip--voided { background: var(--cream); color: var(--muted); }
+.legal h2 { margin-top: 8px; }
+.legal ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.legal a, .legal-links a, .login__form a { color: var(--green); font-weight: 600; }
+.legal-links { margin-top: 8px; }
