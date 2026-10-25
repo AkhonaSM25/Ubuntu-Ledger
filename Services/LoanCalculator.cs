@@ -27,6 +27,9 @@ public record LoanSummary(
     public decimal NextAmount => Math.Min(Instalment, Balance);
     public bool IsOpen => Balance > 0 && !Loan.IsVoided;
     public bool IsVoided => Loan.IsVoided;
+
+    // Recorded but not yet accepted by the borrower. It owes nothing yet, so it is not open and takes no payments.
+    public bool IsAwaiting => Loan.AwaitingAcceptance && !Loan.IsVoided;
 }
 
 public static class LoanCalculator
@@ -48,8 +51,10 @@ public static class LoanCalculator
         var instalment = InstalmentFor(total, loan.Term);
         var paid = loan.Repayments.Where(r => r.Status == PaymentStatus.Confirmed).Sum(r => r.Amount);
         var pending = loan.Repayments.Where(r => r.Status == PaymentStatus.Pending).Sum(r => r.Amount);
-        // A voided loan owes nothing; it stays on record, marked as voided.
-        var balance = loan.IsVoided ? 0 : Math.Max(0, Math.Round(total - paid, 2));
+        // A voided loan owes nothing; it stays on record, marked as voided. A loan still waiting for the borrower to
+        // accept it owes nothing either: the total is shown to the borrower, but only becomes a debt on acceptance.
+        var awaiting = loan.AwaitingAcceptance && !loan.IsVoided;
+        var balance = loan.IsVoided || awaiting ? 0 : Math.Max(0, Math.Round(total - paid, 2));
         var dues = DueDatesFor(loan.StartDate, loan.Term);
 
         // Payments cover instalments in order; the first uncovered one is the next due date.
@@ -69,6 +74,7 @@ public static class LoanCalculator
             };
         }
         if (loan.IsVoided) status = LoanStatus.Voided;
+        else if (awaiting) status = LoanStatus.AwaitingAcceptance;
         var pct = total > 0 ? (int)Math.Min(100, Math.Round(paid / total * 100, MidpointRounding.AwayFromZero)) : 0;
         return new LoanSummary(loan, interest, total, instalment, paid, balance, dues, next, status, days, pct, pending);
     }

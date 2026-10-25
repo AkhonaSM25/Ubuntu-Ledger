@@ -49,7 +49,7 @@ public class CorrectionTests
         var t = await TestDb.SeededAsync();
         var zanele = await t.AccessAsync("Zanele Maseko");
         var nomsa = await t.AccessAsync("Nomsa Khumalo");
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(nomsa.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(nomsa.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
         Assert.True(made.Succeeded);
         return (t, zanele, nomsa, made.Id!.Value);
     }
@@ -114,7 +114,7 @@ public class CorrectionTests
         var nomsa = await t.PersonAsync("Nomsa Khumalo");
         var before = await t.Loans.SnapshotAsync(zanele);
 
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(nomsa.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(nomsa.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
         Assert.True((await t.Loans.SnapshotAsync(zanele)).Outstanding > before.Outstanding);
 
         Assert.True((await t.Loans.VoidLoanAsync(zanele, made.Id!.Value, "Mistake")).Succeeded);

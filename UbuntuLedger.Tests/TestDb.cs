@@ -55,6 +55,16 @@ public sealed class TestDb : IDisposable
         return t;
     }
 
+    // Records a loan and has its borrower accept it, so it is live like the demo loans.
+    public async Task<OperationResult> CreateAcceptedLoanAsync(CircleAccess treasurer, NewLoan input)
+    {
+        var made = await Loans.CreateAsync(treasurer, input);
+        if (!made.Succeeded) return made;
+        var borrower = (await Access.GetAsync(treasurer.Circle.Id, input.BorrowerId))!;
+        var accepted = await Loans.AcceptAsync(borrower, made.Id!.Value);
+        return accepted.Succeeded ? made : accepted;
+    }
+
     public Task<Person> PersonAsync(string name) => Db.People.SingleAsync(p => p.Name == name);
     public Task<Circle> CircleAsync(string name) => Db.Circles.SingleAsync(c => c.Name == name);
 

@@ -24,6 +24,13 @@ public class Loan
     // Number of monthly payments.
     public int Term { get; set; }
 
+    // A loan the treasurer records waits here until the borrower has seen the full cost and accepted it. While it waits
+    // it owes nothing, takes no payments and counts toward no total. False is the default, so every loan that existed
+    // before acceptance was added stays live (those have no AcceptedAt: nobody was asked at the time).
+    public bool AwaitingAcceptance { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public int? AcceptedById { get; set; }
+
     public int CreatedById { get; set; }
     public DateTime CreatedAt { get; set; }
 

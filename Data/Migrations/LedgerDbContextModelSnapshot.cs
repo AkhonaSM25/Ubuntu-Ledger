@@ -88,6 +88,15 @@ namespace UbuntuLedger.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AcceptedById")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AwaitingAcceptance")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("BorrowerId")
                         .HasColumnType("INTEGER");
 

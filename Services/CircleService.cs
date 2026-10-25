@@ -135,6 +135,8 @@ public class CircleService(LedgerDbContext db, LedgerClock clock)
             .ToListAsync();
         if (loans.Any(l => LoanCalculator.Summarize(l, clock.Today).IsOpen))
             return OperationResult.Fail($"{who} still {have} an unpaid loan in this circle. It has to be paid off first.");
+        if (loans.Any(l => l.AwaitingAcceptance))
+            return OperationResult.Fail($"{who} {have} a loan waiting to be accepted. Void it first if it is no longer needed.");
         if (loans.SelectMany(l => l.Repayments).Any(r => r.Status is PaymentStatus.Pending or PaymentStatus.Disputed))
             return OperationResult.Fail($"{who} {have} a payment waiting for an answer. Settle it first.");
 

@@ -38,6 +38,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
         {
             Loans = visible.Where(l => InFilter(l, filter) && Match(l)).OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days).ToList(),
             Voided = await loans.VoidedAsync(Access),
+            Awaiting = await loans.AwaitingAsync(Access),
             Query = q,
             Filter = filter,
             Counts = Filters.ToDictionary(f => f, f => visible.Count(l => InFilter(l, f))),
@@ -76,6 +77,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
     {
         var loan = await loans.FindAsync(Access, id);
         if (loan is null) return NotFound();
+        if (loan.IsAwaiting) return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
         var rows = LedgerRows(loan);
         rows.Reverse();   // LedgerRows is newest first; a statement reads from the top
         return View(new LoanDetailViewModel { Summary = loan, Rows = rows, Today = clock.Today });
@@ -86,7 +88,28 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
     {
         var loan = await loans.FindAsync(Access, id);
         if (loan is null) return NotFound();
-        return View(new LoanDetailViewModel { Summary = loan, Rows = LedgerRows(loan), Today = clock.Today });
+        var nudge = loan.IsAwaiting && Access.IsTreasurer && loan.Loan.BorrowerId != Access.Me.Id ? AcceptanceLink(loan) : null;
+        return View(new LoanDetailViewModel { Summary = loan, Rows = LedgerRows(loan), Today = clock.Today, NudgeLink = nudge });
+    }
+
+    // The borrower has seen the principal, interest and total to repay, and agrees. Only the borrower can do this.
+    [HttpPost("{id:int}/accept"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Accept(int id)
+    {
+        var result = await loans.AcceptAsync(Access, id);
+        Toast(result.Succeeded ? "You accepted the terms. The loan is now active." : result.Error!);
+        return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
+    }
+
+    // A ready-written WhatsApp message: the amounts, and a link to the loan where the borrower accepts.
+    private string AcceptanceLink(LoanSummary l)
+    {
+        var borrower = l.Loan.Borrower;
+        var link = Url.Action(nameof(Details), "Loans", new { circleId = Access.Circle.Id, id = l.Loan.Id }, Request.Scheme);
+        return WhatsApp.Link(borrower.Phone,
+            $"Hi {borrower.FirstName}, {Access.Me.FirstName} at {Access.Circle.Name} has recorded loan {l.Loan.Reference} for you: " +
+            $"{Format.Zar(l.Loan.Principal)} plus {Format.Zar(l.Interest)} interest, so {Format.Zar(l.Total)} to repay in {Format.Plural(l.Loan.Term, "monthly payment")}. " +
+            $"Please check the amounts and accept here: {link}");
     }
 
     // Voids a loan recorded by mistake. It stays on record with the reason and stops counting.
@@ -104,6 +127,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
     {
         var loan = await loans.FindAsync(Access, id);
         if (loan is null) return NotFound();
+        if (loan.IsAwaiting) return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
         var csv = new StringBuilder("Date,Transaction,Detail,Amount,Balance owing\n");
         foreach (var r in LedgerRows(loan))
             csv.AppendLine(string.Join(",", r.Date.ToString("yyyy-MM-dd"), Csv(r.Title), Csv(r.Sub),
@@ -149,7 +173,7 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
             ModelState.AddModelError("", result.Error!);
             return View(model);
         }
-        Toast($"Loan created for {model.BorrowerName}. Total payable {Format.Zar(model.Total)}.");
+        Toast($"Loan recorded for {model.BorrowerName}. Total payable {Format.Zar(model.Total)}. It starts once they accept the terms.");
         return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id = result.Id });
     }
 
