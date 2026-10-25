@@ -8,6 +8,8 @@ public class DashboardViewModel
     public required IReadOnlyList<StatCard> Stats { get; init; }
     public required IReadOnlyList<LoanSummary> Overdue { get; init; }
     public required IReadOnlyList<LoanSummary> DueSoon { get; init; }
+    // Loans recorded but not yet accepted by the borrower. A member sees their own; the treasurer sees all of them.
+    public IReadOnlyList<LoanSummary> LoansToAccept { get; init; } = [];
     public required bool HasLoans { get; init; }
     public required bool HasMembers { get; init; }
     // The signed-in person's own loan with something left to pay (earliest due first), for the "I made a payment" button.
@@ -76,6 +78,8 @@ public class LoansViewModel
     public required IReadOnlyList<LoanSummary> Loans { get; init; }
     // Loans that were voided: on record, but not counted.
     public IReadOnlyList<LoanSummary> Voided { get; init; } = [];
+    // Loans waiting for the borrower to accept their terms. They are not counted in the figures above.
+    public IReadOnlyList<LoanSummary> Awaiting { get; init; } = [];
 
     // Search and filter. The headline figures count every loan, not just the ones shown.
     public string? Query { get; init; }
@@ -92,6 +96,8 @@ public class LoanDetailViewModel
     public required LoanSummary Summary { get; init; }
     public required IReadOnlyList<LedgerRow> Rows { get; init; }
     public required DateOnly Today { get; init; }
+    // Treasurer only, while the loan waits for the borrower: a WhatsApp message with the amounts and a link to accept.
+    public string? NudgeLink { get; init; }
 }
 
 public class NewLoanViewModel

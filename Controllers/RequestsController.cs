@@ -83,7 +83,7 @@ public class RequestsController(CircleAccessService access, LoanRequestService r
             Toast(result.Error!);
             return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, id });
         }
-        Toast("Request approved. The loan has been created.");
+        Toast("Request approved. The loan starts once the member accepts the terms.");
         return RedirectToAction("Details", "Loans", new { circleId = Access.Circle.Id, id = result.Id });
     }
 

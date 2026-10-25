@@ -7,31 +7,50 @@
     ViewData["Nav"] = "loans";
     Layout = "_CircleLayout";
     var circleId = access.Circle.Id;
+    var awaiting = s.IsAwaiting;
+    var isBorrower = loan.BorrowerId == access.Me.Id;
 
     var (noticeText, tone, icon) = s.Status switch
     {
+        LoanStatus.AwaitingAcceptance => (isBorrower
+            ? "Check the amounts below. The loan only starts once you accept them."
+            : $"Waiting for {loan.Borrower.FirstName} to accept these terms. Nothing is owed and no payments can be recorded until they do.", "soon", "clock"),
         LoanStatus.Paid => ("This loan is fully paid. Thank you!", "paid", "check"),
         LoanStatus.Voided => ($"This loan was voided on {Format.Date(DateOnly.FromDateTime(loan.VoidedAt!.Value))}. Reason: {loan.VoidReason}. It stays here as a record and does not count toward any balance.", "ok", "close"),
         LoanStatus.Overdue => ($"{Format.Zar(s.NextAmount)} was due on {Format.Date(s.NextDue!.Value)} ({Format.Plural(s.Days, "day")} overdue).", "overdue", "alert"),
         _ => ($"Next payment {Format.Zar(s.NextAmount)} is due {Format.Date(s.NextDue!.Value)}" + (s.Days == 0 ? " (today)." : $" (in {Format.Plural(s.Days, "day")})."),
               s.Status == LoanStatus.DueSoon ? "soon" : "ok", s.Status == LoanStatus.DueSoon ? "clock" : "cal"),
     };
-    (string Label, string Value, string? Color)[] figures =
-    [
-        ("Principal", Format.Zar(loan.Principal), null), ("Interest accrued", Format.Zar(s.Interest), null),
-        ("Amount paid", Format.Zar(s.Paid), "var(--ok)"), ("Remaining balance", Format.Zar(s.Balance), "var(--green)"),
-    ];
+    var rate = loan.RatePercent.ToString("0.##");
+    var interestLabel = loan.InterestType == InterestType.Simple ? $"Interest ({rate}% flat)" : $"Interest ({rate}% a month)";
+    var figures = awaiting
+        ? new (string Label, string Value, string? Color)[]
+        {
+            ("Amount lent", Format.Zar(loan.Principal), null), (interestLabel, Format.Zar(s.Interest), null),
+            ("Total to repay", Format.Zar(s.Total), "var(--green)"), ("Each monthly payment", Format.Zar(s.Instalment), null),
+        }
+        : new (string Label, string Value, string? Color)[]
+        {
+            ("Principal", Format.Zar(loan.Principal), null), (interestLabel, Format.Zar(s.Interest), null),
+            ("Amount paid", Format.Zar(s.Paid), "var(--ok)"), ("Remaining balance", Format.Zar(s.Balance), "var(--green)"),
+        };
     var interestText = loan.InterestType == InterestType.Simple ? "simple" : "monthly";
+    var interestDetail = loan.InterestType == InterestType.Simple
+        ? $"{rate}% charged once on the amount lent"
+        : $"{rate}% a month for {Format.Plural(loan.Term, "month")}";
     var confirmedPayments = s.Confirmed.OrderByDescending(r => r.Date).ThenByDescending(r => r.Id).ToList();
 }
 <a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")All loans</a>
 <div class="page-head">
     <div class="page-head__text">
         <p class="eyebrow">Loan @loan.Reference</p>
-        <div class="title-row"><h1 class="page-title">@loan.Borrower.Name</h1>@Ui.Chip(s.Status)</div>
-        <p class="page-sub">Issued @Format.Date(loan.StartDate) · @(loan.RatePercent.ToString("0.##"))% @interestText interest · @Format.Plural(loan.Term, "monthly payment")</p>
+        <div class="title-row"><h1 class="page-title">@loan.Borrower.Name</h1>@(awaiting ? Ui.Chip(isBorrower ? "awaiting" : "waiting") : Ui.Chip(s.Status))</div>
+        <p class="page-sub">@(awaiting ? "Proposed" : "Issued") @Format.Date(loan.StartDate) · @rate% @interestText interest · @Format.Plural(loan.Term, "monthly payment")</p>
     </div>
-    <a class="btn btn--secondary stretch-m" asp-action="Statement" asp-route-circleId="@circleId" asp-route-id="@loan.Id">@Ui.Icon("download", 18)Statement</a>
+    @if (!awaiting)
+    {
+        <a class="btn btn--secondary stretch-m" asp-action="Statement" asp-route-circleId="@circleId" asp-route-id="@loan.Id">@Ui.Icon("download", 18)Statement</a>
+    }
     @if (s.IsOpen && s.Available > 0)
     {
         <a class="btn btn--gold stretch-m" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@loan.Id">@Ui.Icon("down", 20, 2.1)@(loan.BorrowerId == access.Me.Id ? "I made a payment" : "I received a payment")</a>
@@ -44,20 +63,60 @@
             <div><div class="figure__label">@f.Label</div><div class="figure__value" style="@(f.Color is null ? null : "color:" + f.Color)">@f.Value</div></div>
         }
     </div>
-    <div>
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin-bottom:8px;font-size:14px">
-            <span style="font-weight:700">@s.PercentRepaid% repaid</span><span class="muted">@Format.Zar(s.Paid) of @Format.Zar(s.Total)</span>
+    @if (awaiting)
+    {
+        <div class="kv">
+            <div class="kv__row"><span>Interest</span><span>@interestDetail</span></div>
+            <div class="kv__row"><span>Payments</span><span>@Format.Plural(loan.Term, "monthly payment") of @Format.Zar(s.Instalment)</span></div>
+            <div class="kv__row"><span>First payment due</span><span>@Format.Date(s.DueDates.First())</span></div>
+            <div class="kv__row"><span>Last payment due</span><span>@Format.Date(s.DueDates.Last())</span></div>
+            <div class="kv__row"><span>Late charges</span><span>None added</span></div>
+            <div class="kv__row kv__row--strong"><span>Total to repay</span><span>@Format.Zar(s.Total)</span></div>
         </div>
-        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@s.PercentRepaid" aria-label="Loan repaid">
-            <div class="progress__bar" style="width:@(s.PercentRepaid)%"></div>
+    }
+    else
+    {
+        <div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin-bottom:8px;font-size:14px">
+                <span style="font-weight:700">@s.PercentRepaid% repaid</span><span class="muted">@Format.Zar(s.Paid) of @Format.Zar(s.Total)</span>
+            </div>
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@s.PercentRepaid" aria-label="Loan repaid">
+                <div class="progress__bar" style="width:@(s.PercentRepaid)%"></div>
+            </div>
         </div>
-    </div>
+    }
     <div class="notice notice--@tone">@Ui.Icon(icon)@noticeText</div>
+    @if (awaiting && isBorrower)
+    {
+        <form method="post" asp-action="Accept" asp-route-circleId="@circleId" asp-route-id="@loan.Id" class="form divider-top">
+            <p class="small muted" style="margin:0">By accepting, you agree to repay @Format.Zar(s.Total) as set out above. Your acceptance is saved with today's date.</p>
+            <div><button type="submit" class="btn btn--primary">@Ui.Icon("check", 20, 2.4)Accept: I will repay @Format.Zar(s.Total)</button></div>
+        </form>
+    }
+    @if (awaiting && Model.NudgeLink is { } nudge)
+    {
+        <div><a class="btn btn--secondary" href="@nudge" target="_blank" rel="noopener">@Ui.Icon("mail", 18)Send these terms to @loan.Borrower.FirstName on WhatsApp</a></div>
+    }
     @if (s.Pending > 0)
     {
         <a class="notice notice--soon" asp-controller="Payments" asp-action="Index" asp-route-circleId="@circleId" style="text-decoration:none">@Ui.Icon("clock")<span>@Format.Zar(s.Pending) is waiting for confirmation and is not counted yet. Review it →</span></a>
     }
 </section>
+@if (awaiting && access.IsTreasurer)
+{
+    <section class="card card--pad">
+        <form method="post" asp-action="Void" asp-route-circleId="@circleId" asp-route-id="@loan.Id" class="form">
+            <label class="field">
+                <span>Recorded this loan by mistake, or no longer needed? Say why you are voiding it.</span>
+                <input class="input" name="reason" maxlength="300" required placeholder="e.g. Wrong amount entered" />
+                <span class="field__help">The loan stays in the history, marked as voided. Nothing was owed, so no totals change.</span>
+            </label>
+            <div><button type="submit" class="btn btn--danger">Void this loan</button></div>
+        </form>
+    </section>
+}
+@if (!awaiting)
+{
 <section class="card">
     <div class="card__head">
         <div>
@@ -131,3 +190,4 @@
         }
     </div>
 </section>
+}

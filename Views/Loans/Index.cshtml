@@ -39,6 +39,30 @@
         }
     </nav>
 </div>
+@if (Model.Awaiting.Count > 0)
+{
+    <section class="card">
+        <div class="card__head">
+            <div>
+                <h2 class="section-title">Waiting to be accepted</h2>
+                <p class="small muted" style="margin-top:2px">@(access.IsTreasurer ? "These loans start once the borrower accepts the terms. They are not counted in the totals." : "Open each one, check the total to repay, then accept.")</p>
+            </div>
+        </div>
+        @foreach (var l in Model.Awaiting)
+        {
+            var mine = l.Loan.BorrowerId == access.Me.Id;
+            <a class="row row--tall" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                @Ui.Avatar(l.Loan.Borrower.Initials)
+                <span class="row__main" style="gap:2px">
+                    <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                    <span class="row__sub">@l.Loan.Reference · @Format.Zar(l.Loan.Principal) lent · @Format.Zar(l.Total) to repay</span>
+                </span>
+                <span class="row__end">@Ui.Chip(mine ? "awaiting" : "waiting")</span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    </section>
+}
 <section class="card">
     @foreach (var l in Model.Loans)
     {

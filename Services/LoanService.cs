@@ -22,10 +22,11 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
 {
     public static readonly int[] Terms = [2, 3, 4, 5, 6, 8, 10, 12];
 
-    // Loans the person may see in this circle, worked out as of today. Voided loans are left out: see VoidedAsync.
+    // Loans the person may see in this circle, worked out as of today. Voided loans are left out (see VoidedAsync) and
+    // so are loans still waiting for the borrower to accept them (see AwaitingAsync): neither counts toward any total.
     public async Task<List<LoanSummary>> VisibleAsync(CircleAccess access)
     {
-        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null);
+        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null && !l.AwaitingAcceptance);
         if (!access.IsTreasurer) q = q.Where(l => l.BorrowerId == access.Me.Id);
         var loans = await q.Include(l => l.Borrower).Include(l => l.Repayments).AsNoTracking().ToListAsync();
         return loans.Select(l => LoanCalculator.Summarize(l, clock.Today)).ToList();
@@ -38,6 +39,16 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         if (!access.IsTreasurer) q = q.Where(l => l.BorrowerId == access.Me.Id);
         var loans = await q.Include(l => l.Borrower).Include(l => l.Repayments).AsNoTracking().ToListAsync();
         return loans.OrderByDescending(l => l.VoidedAt).Select(l => LoanCalculator.Summarize(l, clock.Today)).ToList();
+    }
+
+    // Loans recorded but not yet accepted by the borrower, oldest first. The treasurer sees all of them; a member only
+    // their own. They owe nothing and count toward no total until the borrower accepts.
+    public async Task<List<LoanSummary>> AwaitingAsync(CircleAccess access)
+    {
+        var q = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null && l.AwaitingAcceptance);
+        if (!access.IsTreasurer) q = q.Where(l => l.BorrowerId == access.Me.Id);
+        var loans = await q.Include(l => l.Borrower).Include(l => l.Repayments).AsNoTracking().ToListAsync();
+        return loans.OrderBy(l => l.CreatedAt).Select(l => LoanCalculator.Summarize(l, clock.Today)).ToList();
     }
 
     public async Task<LoanSummary?> FindAsync(CircleAccess access, int loanId)
@@ -100,6 +111,8 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
                 Term = input.Term,
                 CreatedById = access.Me.Id,
                 CreatedAt = DateTime.UtcNow,
+                // The borrower sees the full cost and accepts it before the loan goes live: see AcceptAsync.
+                AwaitingAcceptance = true,
             };
             db.Loans.Add(loan);
             try
@@ -112,6 +125,23 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
                 db.Entry(loan).State = EntityState.Detached;
             }
         }
+    }
+
+    // The borrower has seen the principal, interest and total to repay, and agrees to them. Only now does the loan go
+    // live. Nobody can accept for someone else, the treasurer included.
+    public async Task<OperationResult> AcceptAsync(CircleAccess access, int loanId)
+    {
+        var loan = await db.Loans.FirstOrDefaultAsync(l => l.Id == loanId && l.CircleId == access.Circle.Id);
+        if (loan is null || !access.CanSee(loan)) return OperationResult.Fail("That loan was not found.");
+        if (loan.IsVoided) return OperationResult.Fail("This loan was voided, so there is nothing to accept.");
+        if (loan.BorrowerId != access.Me.Id) return OperationResult.Fail("Only the borrower can accept the terms of their loan.");
+        if (!loan.AwaitingAcceptance) return OperationResult.Fail("These terms have already been accepted.");
+
+        loan.AwaitingAcceptance = false;
+        loan.AcceptedAt = DateTime.UtcNow;
+        loan.AcceptedById = access.Me.Id;
+        await db.SaveChangesAsync();
+        return OperationResult.Ok(loan.Id);
     }
 
     // ---- Two-party payments ----
@@ -161,6 +191,7 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         var loan = await FindAsync(access, input.LoanId);
         if (loan is null) return OperationResult.Fail("That loan was not found.");
         if (loan.IsVoided) return OperationResult.Fail("That loan was voided, so it cannot take payments.");
+        if (loan.IsAwaiting) return OperationResult.Fail("That loan is waiting for the borrower to accept its terms, so it cannot take payments yet.");
         if (!loan.IsOpen) return OperationResult.Fail("That loan is already paid off.");
 
         // A second tap, or a slow connection and a retry, must not record the same payment twice.
@@ -361,7 +392,7 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
     // not load loan or borrower objects, or the repayments' notes and proofs.
     public async Task<PaymentSnapshot> SnapshotAsync(CircleAccess access)
     {
-        var mine = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null);
+        var mine = db.Loans.Where(l => l.CircleId == access.Circle.Id && l.VoidedAt == null && !l.AwaitingAcceptance);
         if (!access.IsTreasurer) mine = mine.Where(l => l.BorrowerId == access.Me.Id);
 
         var terms = await mine.AsNoTracking()

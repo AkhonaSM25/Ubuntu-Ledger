@@ -56,6 +56,7 @@ public class DashboardController(CircleAccessService access, LoanService loans, 
             Stats = stats,
             Overdue = visible.Where(l => l.Status == LoanStatus.Overdue).OrderByDescending(l => l.Days).ToList(),
             DueSoon = visible.Where(l => l.Status == LoanStatus.DueSoon).OrderBy(l => l.Days).ToList(),
+            LoansToAccept = await loans.AwaitingAsync(Access),
             HasLoans = visible.Count > 0,
             HasMembers = hasMembers,
             OwnLoanId = visible.Where(l => l.IsOpen && l.Available > 0 && l.Loan.BorrowerId == Access.Me.Id)

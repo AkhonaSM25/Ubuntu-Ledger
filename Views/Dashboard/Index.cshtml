@@ -39,6 +39,31 @@
 
 <partial name="_StatGrid" model="Model.Stats" />
 
+@if (Model.LoansToAccept.Count > 0)
+{
+    <section class="card">
+        <div class="card__head">
+            <div>
+                <h2 class="section-title">Loans waiting to be accepted</h2>
+                <p class="small muted" style="margin-top:2px">@(access.IsTreasurer ? "These start once the borrower accepts the terms." : "Check the total to repay, then accept to start the loan.")</p>
+            </div>
+        </div>
+        @foreach (var l in Model.LoansToAccept)
+        {
+            var mine = l.Loan.BorrowerId == access.Me.Id;
+            <a class="row row--tall" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@l.Loan.Id">
+                @Ui.Avatar(l.Loan.Borrower.Initials)
+                <span class="row__main">
+                    <span class="row__title">@(mine ? "Your loan of " : l.Loan.Borrower.Name + " · ")@Format.Zar(l.Loan.Principal)</span>
+                    <span class="row__sub">@l.Loan.Reference · @Format.Zar(l.Total) to repay</span>
+                </span>
+                <span class="row__end">@Ui.Chip(mine ? "awaiting" : "waiting")</span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    </section>
+}
+
 @if (Model.Requests.Count > 0)
 {
     <section class="card">

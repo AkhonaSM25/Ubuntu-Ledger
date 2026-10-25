@@ -163,7 +163,7 @@ public class LedgerServiceTests
         var sipho = await t.AccessAsync("Sipho Dlamini");
         var thandi = await t.AccessAsync("Thandi Mokoena");
 
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
         Assert.True(made.Succeeded);
         var loanId = made.Id!.Value;   // R 1 100.00 in total
 
@@ -192,7 +192,7 @@ public class LedgerServiceTests
         using var t = await TestDb.SeededAsync();
         var zanele = await t.AccessAsync("Zanele Maseko");
         var sipho = await t.AccessAsync("Sipho Dlamini");
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
         var sent = await t.Loans.SubmitPaymentAsync(zanele, Pay(made.Id!.Value, 550));
 
         Assert.False((await t.Loans.DisputePaymentAsync(zanele, sent.Id!.Value, "no")).Succeeded);   // not hers to dispute

@@ -122,7 +122,7 @@ public class CoreFeatureTests
         using var t = await TestDb.SeededAsync();
         var zanele = await t.AccessAsync("Zanele Maseko");
         var person = await AddMemberAsync(t, "Lindiwe Zulu", "0827715530");
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(person.Id, 500, 10, InterestType.Simple, TestDb.Today.AddDays(-5), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(person.Id, 500, 10, InterestType.Simple, TestDb.Today.AddDays(-5), 2));
         t.Db.LoanRequests.Add(new LoanRequest { CircleId = zanele.Circle.Id, RequesterId = person.Id, Amount = 200, Term = 2, Status = LoanRequestStatus.Pending, CreatedAt = DateTime.UtcNow });
         await t.Db.SaveChangesAsync();
 
@@ -163,7 +163,7 @@ public class CoreFeatureTests
         using var t = await TestDb.SeededAsync();
         var zanele = await t.AccessAsync("Zanele Maseko");
         var sipho = await t.AccessAsync("Sipho Dlamini");
-        var made = await t.Loans.CreateAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
+        var made = await t.CreateAcceptedLoanAsync(zanele, new NewLoan(zanele.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-30), 2));
         var sent = await t.Loans.SubmitPaymentAsync(zanele, Pay(made.Id!.Value, 550));
         await t.Loans.ConfirmPaymentAsync(sipho, sent.Id!.Value);
 

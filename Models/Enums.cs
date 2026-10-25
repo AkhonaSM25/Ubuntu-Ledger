@@ -38,7 +38,9 @@ public enum LoanStatus
     DueSoon = 2,
     Overdue = 3,
     // Reversed by the treasurer. The loan stays in the history but is left out of every total.
-    Voided = 4
+    Voided = 4,
+    // Recorded by the treasurer but not yet accepted by the borrower. Owes nothing and counts toward no total.
+    AwaitingAcceptance = 5
 }
 
 // Where a payment is in the two-party confirmation flow. Only Confirmed payments reduce a loan's balance.
