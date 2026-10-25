@@ -100,6 +100,12 @@
   // ---------- fields that select their text when tapped (links to copy) ----------
   $$('[data-select]').forEach((el) => el.addEventListener('focus', () => el.select()));
 
+  // ---------- quick-fill buttons (no inline handlers, so the content security policy can block them) ----------
+  $$('[data-fill]').forEach((btn) => btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.fill);
+    if (target) { target.value = btn.dataset.fillValue; target.dispatchEvent(new Event('input', { bubbles: true })); }
+  }));
+
   // ---------- one tap, one submission ----------
   // On a slow connection people tap twice. The buttons switch off after the first tap. The server also refuses
   // an identical payment that is still waiting, in case the page is submitted twice some other way.

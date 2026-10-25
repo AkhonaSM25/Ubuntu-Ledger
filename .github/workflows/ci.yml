@@ -1,11 +1,63 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet test UbuntuLedger.slnx
+
+      - name: Restore
+        run: dotnet restore UbuntuLedger.slnx
+
+      - name: Build
+        run: dotnet build UbuntuLedger.slnx --no-restore --configuration Release
+
+      - name: Test (with coverage)
+        run: >
+          dotnet test UbuntuLedger.slnx --no-build --configuration Release
+          --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Coverage summary
+        if: always()
+        continue-on-error: true
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:CoverageReport -reporttypes:MarkdownSummaryGithub
+          cat CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the coverage files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: ignore
+
+      # Fails the run when a package, including one pulled in by another package, has a known vulnerability.
+      - name: Check packages for known vulnerabilities
+        run: |
+          for project in UbuntuLedger.csproj UbuntuLedger.Tests/UbuntuLedger.Tests.csproj; do
+            dotnet list "$project" package --vulnerable --include-transitive 2>&1 | tee "vulnerable-$(basename "$project").txt"
+          done
+          if grep -q "has the following vulnerable packages" vulnerable-*.txt; then
+            echo "::error::Vulnerable packages found. See the log above."
+            exit 1
+          fi

@@ -5,6 +5,7 @@
 <div class="page">
     <header class="topbar">
         <partial name="_Brand" model="(true, false, false)" />
+        <a class="signout" href="/account/pin" style="min-height:44px;padding:0 12px">Change my PIN</a>
         <form method="post" asp-controller="Account" asp-action="Logout">
             <button type="submit" class="signout" style="min-height:44px;padding:0 12px">@Ui.Icon("signout", 20, 1.9)Sign out</button>
         </form>

@@ -48,8 +48,8 @@
                 <input asp-for="Amount" type="number" inputmode="decimal" min="0" step="0.01" />
             </span>
             <div class="filter-chips">
-                <button type="button" class="quick-chip" onclick="document.getElementById('Amount').value='@Format.Input(Math.Min(sel.Instalment, sel.Available))'">Instalment @Format.Zar(Math.Min(sel.Instalment, sel.Available))</button>
-                <button type="button" class="quick-chip" onclick="document.getElementById('Amount').value='@Format.Input(sel.Available)'">Everything left @Format.Zar(sel.Available)</button>
+                <button type="button" class="quick-chip" data-fill="Amount" data-fill-value="@Format.Input(Math.Min(sel.Instalment, sel.Available))">Instalment @Format.Zar(Math.Min(sel.Instalment, sel.Available))</button>
+                <button type="button" class="quick-chip" data-fill="Amount" data-fill-value="@Format.Input(sel.Available)">Everything left @Format.Zar(sel.Available)</button>
             </div>
         </div>
         <div class="form-grid">

@@ -120,4 +120,29 @@ public class CorrectionTests
         Assert.True((await t.Loans.VoidLoanAsync(zanele, made.Id!.Value, "Mistake")).Succeeded);
         Assert.Equal(before.Outstanding, (await t.Loans.SnapshotAsync(zanele)).Outstanding);
     }
+
+    [Theory]
+    [InlineData("Thandi Mokoena", "\"Thandi Mokoena\"")]
+    [InlineData("=HYPERLINK(\"http://x\")", "\"'=HYPERLINK(\"\"http://x\"\")\"")]
+    [InlineData("+27 82 000 0000", "\"'+27 82 000 0000\"")]
+    [InlineData("-2+3", "\"'-2+3\"")]
+    [InlineData("@SUM(A1)", "\"'@SUM(A1)\"")]
+    [InlineData("", "\"\"")]
+    public void Csv_text_cannot_start_a_spreadsheet_formula(string input, string expected) =>
+        Assert.Equal(expected, CsvSafe.Text(input));
+
+    [Fact]
+    public async Task Loans_reject_silly_dates_and_amounts()
+    {
+        using var t = await TestDb.SeededAsync();
+        var zanele = await t.AccessAsync("Zanele Maseko");
+        var nomsa = await t.PersonAsync("Nomsa Khumalo");
+        NewLoan Loan(decimal amount, DateOnly start) => new(nomsa.Id, amount, 10, InterestType.Simple, start, 2);
+
+        Assert.False((await t.Loans.CreateAsync(zanele, Loan(1000, new DateOnly(226, 1, 1)))).Succeeded);
+        Assert.False((await t.Loans.CreateAsync(zanele, Loan(1000, TestDb.Today.AddYears(-6)))).Succeeded);
+        Assert.False((await t.Loans.CreateAsync(zanele, Loan(1000, TestDb.Today.AddDays(60)))).Succeeded);
+        Assert.False((await t.Loans.CreateAsync(zanele, Loan(LoanService.MaxPrincipal + 1, TestDb.Today))).Succeeded);
+        Assert.True((await t.Loans.CreateAsync(zanele, Loan(1000, TestDb.Today.AddYears(-1)))).Succeeded);
+    }
 }

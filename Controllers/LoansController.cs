@@ -139,5 +139,5 @@ public class LoansController(CircleAccessService access, LoanService loans, Ledg
 
     private static DateOnly Max(DateOnly a, DateOnly b) => a >= b ? a : b;
 
-    private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+    private static string Csv(string s) => CsvSafe.Text(s);
 }
