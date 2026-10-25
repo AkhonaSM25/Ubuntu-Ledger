@@ -56,6 +56,11 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         db.Memberships.Where(m => m.CircleId == circleId)
             .Select(m => m.Person).OrderBy(p => p.Name).ToListAsync();
 
+    // Sanity limits that catch typing mistakes such as a year of 0226 or an extra zero.
+    public const decimal MaxPrincipal = 1_000_000m;
+    public const int MaxBackdateYears = 5;
+    public const int MaxFutureDays = 31;
+
     public async Task<Dictionary<string, string>> ValidateAsync(CircleAccess access, NewLoan input)
     {
         var errors = new Dictionary<string, string>();
@@ -63,6 +68,9 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         if (!await db.Memberships.AnyAsync(m => m.CircleId == access.Circle.Id && m.PersonId == input.BorrowerId))
             errors["BorrowerId"] = "Choose a member of this circle.";
         if (input.Principal <= 0) errors["Principal"] = "Enter an amount more than R 0.00";
+        else if (input.Principal > MaxPrincipal) errors["Principal"] = $"Enter an amount up to {Format.Zar(MaxPrincipal)}.";
+        if (input.StartDate < clock.Today.AddYears(-MaxBackdateYears) || input.StartDate > clock.Today.AddDays(MaxFutureDays))
+            errors["StartDate"] = $"Choose a start date within the last {MaxBackdateYears} years and no more than {MaxFutureDays} days ahead.";
         if (input.RatePercent < 0 || input.RatePercent > 100) errors["RatePercent"] = "Enter a rate between 0% and 100%.";
         if (!Terms.Contains(input.Term)) errors["Term"] = "Choose how many monthly payments.";
         return errors;

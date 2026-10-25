@@ -34,7 +34,7 @@ Demo data loads only when `Seed:DemoData` is `true`. It is on in Development and
 All demo people and numbers are invented. To run a public demo site, set `Seed__DemoData=true` on that site only.
 
 ## Deploying
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for Azure settings, persistent storage, backups, monitoring and cost alerts, and [docs/postgres-migration.md](docs/postgres-migration.md) for moving off SQLite.
+Testing, CI and accessibility checks are in [docs/TESTING.md](docs/TESTING.md). See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for Azure settings, persistent storage, backups, monitoring and cost alerts, and [docs/postgres-migration.md](docs/postgres-migration.md) for moving off SQLite.
 
 ## Project structure
 - `Models/` entities and formatting helpers
@@ -42,7 +42,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for Azure settings, persistent stor
 - `Controllers/` and `Views/` the MVC web layer
 - `Data/` EF Core context, migrations and seed data
 - `UbuntuLedger.Tests/` loan maths, business rules, account security and web tests
-- `docs/` deployment, data inventory, migration plan
+- `docs/` deployment, testing and accessibility checks, data inventory, migration plan
 
 ## How we will know it works
 | Measure | Target |

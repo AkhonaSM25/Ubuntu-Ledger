@@ -1,0 +1,26 @@
+@model ChangePinViewModel
+@{
+    ViewData["Title"] = "Change my PIN";
+    Layout = "_PageLayout";
+}
+<div>
+    <h1 class="page-title">Change my PIN</h1>
+    <p class="page-sub">Choose six digits that only you know. Not 123456 or 111111.</p>
+</div>
+<form class="card card--pad form" method="post" asp-antiforgery="true">
+    <div asp-validation-summary="ModelOnly"></div>
+    <label class="field">
+        Current PIN
+        <input class="input" asp-for="CurrentPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" />
+    </label>
+    <label class="field">
+        New 6-digit PIN
+        <input class="input" asp-for="NewPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" />
+    </label>
+    <label class="field">
+        Type the new PIN again
+        <input class="input" asp-for="ConfirmPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" />
+    </label>
+    <button type="submit" class="btn btn--primary">Save my new PIN</button>
+    <a class="btn btn--secondary" href="/">Cancel</a>
+</form>

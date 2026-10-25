@@ -32,6 +32,13 @@ public class JoinViewModel
     public bool Consent { get; set; }
 }
 
+public class ChangePinViewModel
+{
+    public string? CurrentPin { get; set; }
+    public string? NewPin { get; set; }
+    public string? ConfirmPin { get; set; }
+}
+
 public class ResetPinViewModel
 {
     public string Name { get; set; } = "";

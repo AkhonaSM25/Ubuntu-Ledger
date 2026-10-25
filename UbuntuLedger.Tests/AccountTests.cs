@@ -138,4 +138,30 @@ public class AccountTests
         Assert.Null(result.Token);
         Assert.Contains("another circle", result.Error);
     }
+
+    [Fact]
+    public async Task Changing_your_pin_needs_the_current_one_and_a_good_new_one()
+    {
+        using var t = await TestDb.SeededAsync();
+        var zanele = await t.PersonAsync("Zanele Maseko");
+
+        Assert.False((await t.Accounts.ChangePinAsync(zanele.Id, "999999", "482915", "482915")).Succeeded);               // wrong current
+        Assert.False((await t.Accounts.ChangePinAsync(zanele.Id, Data.SeedData.DemoPin, "123456", "123456")).Succeeded);  // weak
+        Assert.False((await t.Accounts.ChangePinAsync(zanele.Id, Data.SeedData.DemoPin, "482915", "482916")).Succeeded);  // mismatch
+        Assert.True((await t.Accounts.ChangePinAsync(zanele.Id, Data.SeedData.DemoPin, "482915", "482915")).Succeeded);
+
+        Assert.Null((await t.Accounts.SignInAsync(SeedData_Phone, Data.SeedData.DemoPin)).Person);
+        Assert.NotNull((await t.Accounts.SignInAsync(SeedData_Phone, "482915")).Person);
+    }
+
+    [Fact]
+    public async Task Guessing_the_current_pin_on_the_change_page_counts_towards_the_lockout()
+    {
+        using var t = await TestDb.SeededAsync();
+        var zanele = await t.PersonAsync("Zanele Maseko");
+        for (var i = 0; i < AccountService.MaxFailedAttempts; i++)
+            await t.Accounts.ChangePinAsync(zanele.Id, "999999", "482915", "482915");
+
+        Assert.False((await t.Accounts.ChangePinAsync(zanele.Id, Data.SeedData.DemoPin, "482915", "482915")).Succeeded);
+    }
 }

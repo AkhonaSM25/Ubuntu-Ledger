@@ -149,6 +149,35 @@ public class AccountService(LedgerDbContext db, LedgerClock clock, TimeProvider 
 
     private static JoinResult Failed(string error) => new(null, 0, error);
 
+    // ---- Changing your own PIN ----
+
+    // Checks the current PIN the same way sign-in does (so wrong guesses count towards the lockout), then sets the new one.
+    public async Task<OperationResult> ChangePinAsync(int personId, string? currentPin, string? newPin, string? confirmPin)
+    {
+        var person = await db.People.FirstOrDefaultAsync(p => p.Id == personId);
+        if (person is null) return OperationResult.Fail("Your account was not found.");
+
+        var check = await SignInAsync(person.Phone, currentPin);
+        if (check.Person is null)
+            return OperationResult.Fail(check.Error!.StartsWith("Too many") ? check.Error : "Your current PIN is not right.");
+
+        var pinError = PinPolicy.Check(newPin);
+        if (pinError is not null) return OperationResult.Fail(pinError);
+        if (newPin != confirmPin) return OperationResult.Fail("The two new PINs do not match.");
+        if (newPin == currentPin) return OperationResult.Fail("Choose a PIN different from your current one.");
+
+        // SignInAsync reads without tracking, so load the person again to save the new hash.
+        db.ChangeTracker.Clear();
+        person = await db.People.FirstAsync(p => p.Id == personId);
+        person.PinHash = Hasher.HashPassword(person, newPin!);
+        person.PinChangedAt = Now;
+        person.PinResetTokenHash = null;
+        person.PinResetExpiresAt = null;
+        await db.SaveChangesAsync();
+        log.LogInformation("Person {PersonId} changed their PIN", person.Id);
+        return OperationResult.Ok(person.Id);
+    }
+
     // ---- Treasurer-assisted PIN reset ----
 
     // A one-time link for a member who forgot their PIN. Returns the secret once; only its hash is kept.

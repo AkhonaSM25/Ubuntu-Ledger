@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UbuntuLedger.Data;
@@ -46,7 +47,8 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 
-builder.Services.AddControllersWithViews();
+// Every POST, PUT, PATCH and DELETE has to carry the anti-forgery token, so a new form cannot forget it.
+builder.Services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<LedgerClock>();
@@ -96,6 +98,13 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    // Only this site's own scripts run. Styles may be inline (the views use style attributes); the one outside
+    // source is Google Fonts. Pages cannot be framed or post forms anywhere else.
+    context.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; " +
+        "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
     await next();
 });
 

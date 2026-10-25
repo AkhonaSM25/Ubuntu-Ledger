@@ -126,4 +126,32 @@ public class WebTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("invite link is not valid", await response.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task Pages_send_a_content_security_policy_that_blocks_inline_scripts()
+    {
+        var response = await factory.NewClient().GetAsync("/login");
+        var csp = string.Join(" ", response.Headers.GetValues("Content-Security-Policy"));
+        Assert.Contains("script-src 'self'", csp);
+        Assert.DoesNotContain("script-src 'self' 'unsafe-inline'", csp);
+        Assert.Contains("frame-ancestors 'none'", csp);
+    }
+
+    [Fact]
+    public async Task A_post_without_an_antiforgery_token_is_refused_even_on_a_form_that_forgot_the_attribute()
+    {
+        var sipho = await factory.SignedInAsync(SeedData.MemberPhone);
+        var response = await sipho.PostAsync("/account/pin", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["CurrentPin"] = SeedData.DemoPin, ["NewPin"] = "482915", ["ConfirmPin"] = "482915",
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_change_pin_page_needs_sign_in()
+    {
+        var response = await factory.NewClient().GetAsync("/account/pin");
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+    }
 }

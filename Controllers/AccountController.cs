@@ -127,6 +127,25 @@ public class AccountController(AccountService accounts, CircleService circles, I
         return View(new ResetPinViewModel { Name = person.FirstName });
     }
 
+    // ---- Changing your own PIN ----
+
+    [Authorize, HttpGet("/account/pin")]
+    public IActionResult ChangePin() => View(new ChangePinViewModel());
+
+    [Authorize, HttpPost("/account/pin"), EnableRateLimiting("login")]
+    public async Task<IActionResult> ChangePin(ChangePinViewModel model)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var personId)) return Challenge();
+        var result = await accounts.ChangePinAsync(personId, model.CurrentPin, model.NewPin, model.ConfirmPin);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError("", result.Error!);
+            return View(new ChangePinViewModel());
+        }
+        TempData["Toast"] = "Your PIN is changed.";
+        return RedirectToAction("Index", "Circles");
+    }
+
     private async Task StartSessionAsync(Person person)
     {
         var identity = new ClaimsIdentity(
