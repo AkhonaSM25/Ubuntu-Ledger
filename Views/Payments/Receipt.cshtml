@@ -1,0 +1,42 @@
+@model ReceiptViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    var r = Model.Receipt;
+    var p = r.Payment;
+    ViewData["Title"] = "Receipt R-" + p.Id.ToString("00000");
+    ViewData["Print"] = true;
+}
+@* A printable receipt; the browser's print dialog saves it as a PDF. *@
+<div class="page">
+    <main class="page__body" id="main" tabindex="-1">
+        <div class="page__inner stack" style="max-width:640px">
+            <div class="page-head">
+                <div class="page-head__text">
+                    <partial name="_Brand" model="(true, false, false)" />
+                    <h1 class="page-title" style="margin-top:20px">Payment receipt</h1>
+                    <p class="page-sub">R-@p.Id.ToString("00000") · @access.Circle.Name</p>
+                </div>
+                <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap">
+                    <a class="btn btn--secondary btn--sm" asp-action="Details" asp-route-circleId="@access.Circle.Id" asp-route-id="@p.Id">Back</a>
+                    <button type="button" class="btn btn--primary btn--sm" data-print>@Ui.Icon("download", 18)Save as PDF</button>
+                </div>
+            </div>
+            <section class="card card--pad">
+                <div class="figure__label">Amount received</div>
+                <div class="figure__value" style="font-size:34px">@Format.Zar(p.Amount)</div>
+                <dl class="receipt">
+                    <div><dt>Loan</dt><dd>@r.Loan.Reference · @r.Loan.Borrower.Name</dd></div>
+                    <div><dt>Payment date</dt><dd>@Format.Date(p.Date)</dd></div>
+                    <div><dt>Method</dt><dd>@p.Method@(string.IsNullOrWhiteSpace(p.Reference) ? "" : " · ref " + p.Reference)</dd></div>
+                    <div><dt>Recorded by</dt><dd>@r.SubmittedByName</dd></div>
+                    <div><dt>Confirmed by</dt><dd>@r.ConfirmedByName@(p.ReviewedAt is { } at ? " on " + Format.Date(DateOnly.FromDateTime(at)) : "")</dd></div>
+                    @if (r.BalanceAfter is { } after)
+                    {
+                        <div><dt>Balance after this payment</dt><dd>@Format.Zar(after)</dd></div>
+                    }
+                </dl>
+            </section>
+            <p class="small muted">Both people confirmed this payment in Ubuntu Ledger. It is a record kept by the circle, not a bank document.</p>
+        </div>
+    </main>
+</div>

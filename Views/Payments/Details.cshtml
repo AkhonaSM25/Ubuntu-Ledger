@@ -25,6 +25,10 @@
         <div class="title-row"><h1 class="page-title">@r.Headline</h1>@Ui.Chip(r.Chip, r.ChipLabel)</div>
         <p class="page-sub">@statusText</p>
     </div>
+    @if (p.Status == PaymentStatus.Confirmed)
+    {
+        <a class="btn btn--secondary stretch-m" asp-action="Receipt" asp-route-circleId="@circleId" asp-route-id="@p.Id">@Ui.Icon("download", 18)Receipt</a>
+    }
 </div>
 <div class="split">
     <section class="card card--pad form split__main">

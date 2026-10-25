@@ -10,6 +10,9 @@ public record NewPayment(int LoanId, decimal Amount, DateOnly Date, PaymentMetho
 // A payment together with its loan and the name of whoever submitted it.
 public record PaymentEntry(Repayment Payment, Loan Loan, string SubmittedByName);
 
+// Everything a payment receipt shows. The balance is left out for a member who only confirmed the treasurer's payment.
+public record ReceiptData(Repayment Payment, Loan Loan, string SubmittedByName, string ConfirmedByName, decimal? BalanceAfter);
+
 // What the sidebar and nav badge need: payments waiting on me, what is owed, and how much of that is pending.
 public record PaymentSnapshot(int NeedsMyAction, decimal Outstanding, decimal Pending, int Requests = 0);
 
@@ -336,6 +339,22 @@ public class LoanService(LedgerDbContext db, LedgerClock clock)
         if (p is null) return null;
         var name = (await db.People.FindAsync(p.RecordedById))?.Name ?? "Someone";
         return new PaymentEntry(p, p.Loan, name);
+    }
+
+    // A receipt exists only for a payment both people confirmed (and that has not been reversed).
+    public async Task<ReceiptData?> ReceiptAsync(CircleAccess access, int paymentId)
+    {
+        var entry = await PaymentEntryAsync(access, paymentId);
+        if (entry is null || entry.Payment.Status != PaymentStatus.Confirmed) return null;
+        var p = entry.Payment;
+        var confirmedBy = p.ReviewedById is { } reviewer ? (await db.People.FindAsync(reviewer))?.Name ?? "Someone" : "Someone";
+
+        decimal? after = null;
+        var summary = await FindAsync(access, p.LoanId);   // null for a member who may not see the loan
+        if (summary is not null)
+            after = Math.Max(0, summary.Total - summary.Confirmed
+                .Where(r => r.Date < p.Date || (r.Date == p.Date && r.Id <= p.Id)).Sum(r => r.Amount));
+        return new ReceiptData(p, entry.Loan, entry.SubmittedByName, confirmedBy, after);
     }
 
     // The sidebar runs on every page of a circle, so it reads only the columns it needs and tracks nothing. It does

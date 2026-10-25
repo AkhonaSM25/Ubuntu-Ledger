@@ -4,7 +4,7 @@
     var circleId = access.Circle.Id;
     var active = ViewData["Nav"] as string ?? "dashboard";
     var me = access.Me;
-    var role = access.IsTreasurer ? "Circle treasurer" : "Member";
+    var role = access.IsTreasurer ? "Circle treasurer" : access.IsBackup ? "Backup treasurer" : "Member";
     var snapshot = ViewData["Snapshot"] as PaymentSnapshot;
     var nav = new List<(string Key, string Label, string Icon, string Controller)> { ("dashboard", "Home", "home", "Dashboard"), ("payments", "Confirmations", "check", "Payments") };
     if (access.IsTreasurer) { nav.Add(("members", "Members", "users", "Members")); }

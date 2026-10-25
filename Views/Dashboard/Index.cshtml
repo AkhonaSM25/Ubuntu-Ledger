@@ -174,3 +174,23 @@ else
 {
     <partial name="_EmptyState" model="@(("No loans here yet", (string?)$"When the treasurer of {access.Circle.Name} records a loan for you, you will see it here.", "hero"))" />
 }
+@if (!access.IsTreasurer)
+{
+    <section class="card card--pad stack" style="margin-top:16px">
+        @if (access.IsBackup)
+        {
+            <div>
+                <h2 class="section-title">You are the backup treasurer</h2>
+                <p class="small muted" style="margin-top:4px">If your treasurer forgets their PIN, you can make them a one-time reset link.</p>
+            </div>
+            <div><a class="btn btn--secondary btn--sm" asp-controller="Members" asp-action="TreasurerRecovery" asp-route-circleId="@circleId">Help the treasurer back in</a></div>
+        }
+        <details class="corrections">
+            <summary>Leave this circle</summary>
+            <form method="post" asp-controller="Members" asp-action="Leave" asp-route-circleId="@circleId" class="form">
+                <p class="small muted" style="margin:0">You can leave once you owe nothing and have no payment waiting. Your past loans and payments stay in the circle's history.</p>
+                <div><button type="submit" class="btn btn--danger">Leave @access.Circle.Name</button></div>
+            </form>
+        </details>
+    </section>
+}

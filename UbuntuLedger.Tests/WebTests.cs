@@ -154,4 +154,73 @@ public class WebTests(AppFactory factory) : IClassFixture<AppFactory>
         var response = await factory.NewClient().GetAsync("/account/pin");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
     }
+
+    private async Task<int> LoanIdAsync(string reference)
+    {
+        using var scope = factory.Services.CreateScope();
+        return (await scope.ServiceProvider.GetRequiredService<LedgerDbContext>().Loans.SingleAsync(l => l.Reference == reference)).Id;
+    }
+
+    [Fact]
+    public async Task The_forgot_pin_page_is_public_and_linked_from_sign_in()
+    {
+        var client = factory.NewClient();
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/forgot-pin")).StatusCode);
+        Assert.Contains("/forgot-pin", await (await client.GetAsync("/login")).Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Searching_loans_narrows_the_list()
+    {
+        var circleId = await CircleIdAsync("The Circle");
+        var zanele = await factory.SignedInAsync(SeedData.TreasurerPhone);
+        var html = await (await zanele.GetAsync($"/circles/{circleId}/loans?q=Thandi")).Content.ReadAsStringAsync();
+        Assert.Contains("Thandi Mokoena", html);
+        Assert.DoesNotContain("Sipho Dlamini", html);
+
+        var overdue = await (await zanele.GetAsync($"/circles/{circleId}/loans?filter=overdue")).Content.ReadAsStringAsync();
+        Assert.Contains("UL-0", overdue);
+    }
+
+    [Fact]
+    public async Task Reminders_are_for_the_treasurer_only()
+    {
+        var circleId = await CircleIdAsync("The Circle");
+        var zanele = await factory.SignedInAsync(SeedData.TreasurerPhone);
+        var sipho = await factory.SignedInAsync(SeedData.MemberPhone);
+        var page = await zanele.GetAsync($"/circles/{circleId}/loans/reminders");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("https://wa.me/", await page.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await sipho.GetAsync($"/circles/{circleId}/loans/reminders")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_loan_statement_opens_for_people_who_can_see_the_loan_only()
+    {
+        var circleId = await CircleIdAsync("The Circle");
+        var loanId = await LoanIdAsync("UL-0101");   // Thandi's loan
+        var zanele = await factory.SignedInAsync(SeedData.TreasurerPhone);
+        var sipho = await factory.SignedInAsync(SeedData.MemberPhone);
+
+        var page = await zanele.GetAsync($"/circles/{circleId}/loans/{loanId}/statement");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("UL-0101", await page.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await sipho.GetAsync($"/circles/{circleId}/loans/{loanId}/statement")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_receipt_for_a_payment_that_does_not_exist_is_not_found()
+    {
+        var circleId = await CircleIdAsync("The Circle");
+        var zanele = await factory.SignedInAsync(SeedData.TreasurerPhone);
+        Assert.Equal(HttpStatusCode.NotFound, (await zanele.GetAsync($"/circles/{circleId}/payments/99999/receipt")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_backup_recovery_page_is_only_for_the_backup_treasurer()
+    {
+        var circleId = await CircleIdAsync("The Circle");
+        var sipho = await factory.SignedInAsync(SeedData.MemberPhone);
+        Assert.Equal(HttpStatusCode.NotFound, (await sipho.GetAsync($"/circles/{circleId}/members/treasurer-recovery")).StatusCode);
+    }
 }

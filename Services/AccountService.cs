@@ -184,7 +184,9 @@ public class AccountService(LedgerDbContext db, LedgerClock clock, TimeProvider 
     // Accounts are shared across circles, so a treasurer can only reset someone who belongs to no other circle.
     public async Task<(string? Token, string? Error)> CreatePinResetAsync(CircleAccess access, int personId)
     {
-        if (!access.IsTreasurer) return (null, "Only the treasurer can reset a PIN.");
+        // The treasurer resets members. The backup treasurer can reset one account only: the treasurer's own.
+        var backupForTreasurer = access.IsBackup && personId == access.TreasurerId;
+        if (!access.IsTreasurer && !backupForTreasurer) return (null, "Only the treasurer can reset a PIN.");
         if (personId == access.Me.Id) return (null, "You cannot reset your own PIN here.");
 
         var person = await db.People.Include(p => p.Memberships)

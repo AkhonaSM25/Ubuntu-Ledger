@@ -27,6 +27,8 @@ public class MembersViewModel
     public required int InvitedCount { get; init; }
     public string? Query { get; init; }
     public string Filter { get; init; } = "all";
+    // People who left or were removed but still have loans on record. Shown so their history is never lost.
+    public IReadOnlyList<MemberSummary> Former { get; init; } = [];
 }
 
 public record TimelineEntry(DateOnly Date, bool IsPayment, decimal Amount, string Title, string Sub, decimal Balance);
@@ -43,6 +45,30 @@ public class MemberDetailViewModel
     // Set for one page view right after the treasurer made a reset link.
     public string? ResetLink { get; init; }
     public string? ResetWhatsAppUrl { get; init; }
+
+    // Treasurer only: choosing a backup treasurer and removing someone from the circle.
+    public bool IsBackup { get; init; }
+    public bool CanManage { get; init; }
+}
+
+// The backup treasurer's page for getting the treasurer back in after a forgotten PIN.
+public class TreasurerRecoveryViewModel
+{
+    public required string TreasurerName { get; init; }
+    public string? ResetLink { get; init; }
+    public string? ResetWhatsAppUrl { get; init; }
+}
+
+public record ReminderRow(LoanSummary Loan, string Url);
+
+public class RemindersViewModel
+{
+    public required IReadOnlyList<ReminderRow> Rows { get; init; }
+}
+
+public class ReceiptViewModel
+{
+    public required UbuntuLedger.Services.ReceiptData Receipt { get; init; }
 }
 
 public class LoansViewModel
@@ -50,6 +76,13 @@ public class LoansViewModel
     public required IReadOnlyList<LoanSummary> Loans { get; init; }
     // Loans that were voided: on record, but not counted.
     public IReadOnlyList<LoanSummary> Voided { get; init; } = [];
+
+    // Search and filter. The headline figures count every loan, not just the ones shown.
+    public string? Query { get; init; }
+    public string Filter { get; init; } = "all";
+    public IReadOnlyDictionary<string, int> Counts { get; init; } = new Dictionary<string, int>();
+    public int OpenCount { get; init; }
+    public decimal Outstanding { get; init; }
 }
 
 public record LedgerRow(DateOnly Date, string Title, string Sub, decimal Amount, bool IsCredit, decimal Balance);

@@ -1,0 +1,37 @@
+@model RemindersViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Reminders";
+    ViewData["Nav"] = "loans";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<a class="back-link" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")All loans</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <h1 class="page-title">Reminders</h1>
+        <p class="page-sub">@(Model.Rows.Count == 0 ? "Nobody is overdue or due in the next week." : Format.Plural(Model.Rows.Count, "loan") + " overdue or due in the next 7 days. Tap send to open WhatsApp with the message ready.")</p>
+    </div>
+</div>
+<section class="card">
+    @foreach (var r in Model.Rows)
+    {
+        var l = r.Loan;
+        <div class="row row--tall">
+            @Ui.Avatar(l.Loan.Borrower.Initials)
+            <span class="row__main" style="gap:2px">
+                <span class="row__title ellipsis">@l.Loan.Borrower.Name</span>
+                <span class="row__sub">@l.Loan.Reference · @Format.Zar(l.NextAmount) @(l.Status == LoanStatus.Overdue ? $"was due {Format.Plural(l.Days, "day")} ago" : $"due {Format.Date(l.NextDue!.Value)}") · owes @Format.Zar(l.Balance)</span>
+            </span>
+            <span class="row__end" style="gap:6px">
+                @Ui.Chip(l.Status)
+                <a class="btn btn--secondary btn--xs" href="@r.Url" target="_blank" rel="noopener">@Ui.Icon("mail", 18)Send reminder<span class="sr-only"> to @l.Loan.Borrower.Name</span></a>
+            </span>
+        </div>
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(("All clear", (string?)"Everyone is up to date.", "inset"))" />
+    }
+</section>
+<p class="small muted">Reminders open in WhatsApp and you send them yourself. Nothing is sent automatically.</p>

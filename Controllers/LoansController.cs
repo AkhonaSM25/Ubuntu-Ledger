@@ -10,17 +10,75 @@ namespace UbuntuLedger.Controllers;
 [Route("circles/{circleId:int}/loans")]
 public class LoansController(CircleAccessService access, LoanService loans, LedgerClock clock) : CircleControllerBase(access)
 {
-    [HttpGet("")]
-    public async Task<IActionResult> Index()
+    private static readonly string[] Filters = ["all", "overdue", "soon", "ok", "paid"];
+
+    // Most urgent first: overdue (longest first), due soon, up to date, then paid.
+    private static int Severity(LoanStatus s) => s switch { LoanStatus.Overdue => 0, LoanStatus.DueSoon => 1, LoanStatus.UpToDate => 2, _ => 3 };
+
+    private static string StatusKey(LoanStatus s) => s switch
     {
+        LoanStatus.Overdue => "overdue",
+        LoanStatus.DueSoon => "soon",
+        LoanStatus.Paid => "paid",
+        _ => "ok",
+    };
+
+    [HttpGet("")]
+    public async Task<IActionResult> Index(string? q, string? filter)
+    {
+        filter = Filters.Contains(filter) ? filter! : "all";
         var visible = await loans.VisibleAsync(Access);
-        // Most urgent first: overdue (longest first), due soon, up to date, then paid.
-        int Severity(LoanStatus s) => s switch { LoanStatus.Overdue => 0, LoanStatus.DueSoon => 1, LoanStatus.UpToDate => 2, _ => 3 };
+
+        bool Match(LoanSummary l) => string.IsNullOrWhiteSpace(q)
+            || l.Loan.Borrower.Name.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase)
+            || l.Loan.Reference.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase);
+        bool InFilter(LoanSummary l, string f) => f == "all" || StatusKey(l.Status) == f;
+
         return View(new LoansViewModel
         {
-            Loans = visible.OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days).ToList(),
+            Loans = visible.Where(l => InFilter(l, filter) && Match(l)).OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days).ToList(),
             Voided = await loans.VoidedAsync(Access),
+            Query = q,
+            Filter = filter,
+            Counts = Filters.ToDictionary(f => f, f => visible.Count(l => InFilter(l, f))),
+            OpenCount = visible.Count(l => l.IsOpen),
+            Outstanding = visible.Sum(l => l.Balance),
         });
+    }
+
+    // Treasurer only: who is overdue or due soon, each with a ready-written WhatsApp reminder.
+    [HttpGet("reminders")]
+    public async Task<IActionResult> Reminders()
+    {
+        if (!Access.IsTreasurer) return NotFound();
+        var due = (await loans.VisibleAsync(Access))
+            .Where(l => l.Status is LoanStatus.Overdue or LoanStatus.DueSoon && l.Loan.BorrowerId != Access.Me.Id)   // not a reminder to yourself
+            .OrderBy(l => Severity(l.Status)).ThenByDescending(l => l.Days)
+            .ToList();
+        return View(new RemindersViewModel { Rows = due.Select(l => new ReminderRow(l, ReminderLink(l))).ToList() });
+    }
+
+    private string ReminderLink(LoanSummary l)
+    {
+        var borrower = l.Loan.Borrower;
+        var pay = Url.Action("Create", "Payments", new { circleId = Access.Circle.Id, loanId = l.Loan.Id }, Request.Scheme);
+        var when = l.Status == LoanStatus.Overdue
+            ? $"was due on {Format.Date(l.NextDue!.Value)} ({Format.Plural(l.Days, "day")} ago)"
+            : $"is due on {Format.Date(l.NextDue!.Value)}";
+        return WhatsApp.Link(borrower.Phone,
+            $"Hi {borrower.FirstName}, a friendly reminder from {Access.Me.FirstName} at {Access.Circle.Name}: your payment of {Format.Zar(l.NextAmount)} " +
+            $"for loan {l.Loan.Reference} {when}. You still owe {Format.Zar(l.Balance)}. After you pay, record it here: {pay}");
+    }
+
+    // A printable statement of one loan, oldest entry first. The browser's print dialog saves it as a PDF.
+    [HttpGet("{id:int}/statement")]
+    public async Task<IActionResult> Statement(int id)
+    {
+        var loan = await loans.FindAsync(Access, id);
+        if (loan is null) return NotFound();
+        var rows = LedgerRows(loan);
+        rows.Reverse();   // LedgerRows is newest first; a statement reads from the top
+        return View(new LoanDetailViewModel { Summary = loan, Rows = rows, Today = clock.Today });
     }
 
     [HttpGet("{id:int}")]

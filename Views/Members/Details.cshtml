@@ -48,6 +48,27 @@
         </details>
     </section>
 }
+@if (Model.CanManage)
+{
+    <section class="card card--pad">
+        <details class="corrections">
+            <summary>Manage @p.FirstName@(Model.IsBackup ? " · backup treasurer" : "")</summary>
+            <div class="form">
+                <form method="post" asp-action="Backup" asp-route-circleId="@circleId" asp-route-personId="@p.Id" class="form">
+                    <input type="hidden" name="appoint" value="@(Model.IsBackup ? "false" : "true")" />
+                    <p class="small muted" style="margin:0">@(Model.IsBackup
+                        ? $"{p.FirstName} can make you a PIN reset link if you forget your PIN. They have no other extra powers."
+                        : $"Choose someone you trust. If you forget your own PIN, {p.FirstName} can make you a one-time reset link. They get no other extra powers, and only one person can be backup.")</p>
+                    <div><button type="submit" class="btn btn--secondary">@(Model.IsBackup ? "Remove as backup treasurer" : "Make backup treasurer")</button></div>
+                </form>
+                <form method="post" asp-action="Remove" asp-route-circleId="@circleId" asp-route-personId="@p.Id" class="form divider-top">
+                    <p class="small muted" style="margin:0">Remove @p.FirstName from @access.Circle.Name. This only works when they owe nothing and have no payment waiting. Their past loans and payments stay in the history.</p>
+                    <div><button type="submit" class="btn btn--danger">Remove @p.FirstName</button></div>
+                </form>
+            </div>
+        </details>
+    </section>
+}
 <div class="two-col">
     <section class="card">
         <div class="card__head"><h2 class="section-title">Loan history</h2></div>

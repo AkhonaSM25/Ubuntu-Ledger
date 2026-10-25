@@ -1,0 +1,39 @@
+@model TreasurerRecoveryViewModel
+@{
+    var access = (CircleAccess)ViewData["Access"]!;
+    ViewData["Title"] = "Help the treasurer back in";
+    ViewData["Nav"] = "dashboard";
+    Layout = "_CircleLayout";
+    var circleId = access.Circle.Id;
+}
+<a class="back-link" asp-controller="Dashboard" asp-action="Index" asp-route-circleId="@circleId">@Ui.Icon("chevronLeft")Home</a>
+<div class="page-head">
+    <div class="page-head__text">
+        <p class="eyebrow">Backup treasurer</p>
+        <h1 class="page-title">Help @Model.TreasurerName back in</h1>
+        <p class="page-sub">You are the backup treasurer. If @Model.TreasurerName forgot their PIN, make a one-time link and send it to them. They choose the new PIN themselves, so you never see it.</p>
+    </div>
+</div>
+@if (Model.ResetLink is not null)
+{
+    <section class="card card--pad form" aria-labelledby="reset-link-title">
+        <h2 class="section-title" id="reset-link-title">Reset link for @Model.TreasurerName</h2>
+        <p class="small muted" style="margin:0">Send it only to @Model.TreasurerName. It works once and expires in two days. This link is shown once: if you lose it, make a new one.</p>
+        <label class="field">
+            <span>Link</span>
+            <input class="input" readonly value="@Model.ResetLink" data-select />
+        </label>
+        <div class="form-actions" style="justify-content:flex-start">
+            <a class="btn btn--primary" href="@Model.ResetWhatsAppUrl" target="_blank" rel="noopener">@Ui.Icon("mail", 20)Send on WhatsApp</a>
+        </div>
+    </section>
+}
+else
+{
+    <section class="card card--pad form">
+        <p class="small muted" style="margin:0">Only make a link when @Model.TreasurerName has asked you to. Check it is really them.</p>
+        <form method="post" asp-action="CreateTreasurerRecovery" asp-route-circleId="@circleId" class="form">
+            <div><button type="submit" class="btn btn--primary">Make a reset link</button></div>
+        </form>
+    </section>
+}

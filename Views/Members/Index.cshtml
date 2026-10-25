@@ -74,3 +74,21 @@
         <partial name="_EmptyState" model="@(("No members match", (string?)"Try a different name or choose “All”.", "inset"))" />
     }
 </section>
+@if (Model.Former.Count > 0)
+{
+    <section class="card">
+        <div class="card__head"><h2 class="section-title">Former members</h2></div>
+        @foreach (var m in Model.Former)
+        {
+            var latest = m.Loans.OrderByDescending(l => l.Loan.StartDate).First();
+            <a class="row row--76" asp-controller="Loans" asp-action="Details" asp-route-circleId="@circleId" asp-route-id="@latest.Loan.Id">
+                @Ui.Avatar(m.Person.Initials)
+                <span class="row__main">
+                    <span class="row__title ellipsis">@m.Person.Name</span>
+                    <span class="row__sub">Left the circle · @Format.Plural(m.Loans.Count, "loan") on record</span>
+                </span>
+                <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>
+            </a>
+        }
+    </section>
+}

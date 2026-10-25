@@ -5,20 +5,39 @@
     ViewData["Nav"] = "loans";
     Layout = "_CircleLayout";
     var circleId = access.Circle.Id;
-    var open = Model.Loans.Count(l => l.IsOpen);
+    (string Key, string Label)[] filters = [("all", "All"), ("overdue", "Overdue"), ("soon", "Due soon"), ("ok", "Up to date"), ("paid", "Paid")];
+    var overdueOrSoon = Model.Counts.GetValueOrDefault("overdue") + Model.Counts.GetValueOrDefault("soon");
 }
 <div class="page-head">
     <div class="page-head__text">
         <h1 class="page-title">@ViewData["Title"]</h1>
-        <p class="page-sub">@Format.Plural(open, "open loan") · @Format.Zar(Model.Loans.Sum(l => l.Balance)) outstanding</p>
+        <p class="page-sub">@Format.Plural(Model.OpenCount, "open loan") · @Format.Zar(Model.Outstanding) outstanding</p>
     </div>
     <div class="actions">
         <a class="btn btn--secondary btn--sm" asp-controller="Requests" asp-action="Index" asp-route-circleId="@circleId">Loan requests</a>
         @if (access.IsTreasurer)
         {
+            <a class="btn btn--secondary btn--sm" asp-action="Reminders" asp-route-circleId="@circleId">Reminders@(overdueOrSoon > 0 ? " · " + overdueOrSoon : "")</a>
             <a class="btn btn--primary btn--sm" asp-action="Create" asp-route-circleId="@circleId">@Ui.Icon("plus", 18, 2.1)New loan</a>
         }
     </div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+    <form method="get" role="search">
+        <input type="hidden" name="filter" value="@Model.Filter" />
+        <label class="affix search">
+            <span class="muted">@Ui.Icon("search")</span>
+            <span class="sr-only">Search loans</span>
+            <input type="search" name="q" value="@Model.Query" placeholder="@(access.IsTreasurer ? "Search by name or loan number" : "Search by loan number")" data-autosubmit />
+        </label>
+    </form>
+    <nav class="filter-chips" aria-label="Filter by status">
+        @foreach (var f in filters)
+        {
+            <a class="filter-chip" asp-action="Index" asp-route-circleId="@circleId" asp-route-filter="@(f.Key == "all" ? null : f.Key)" asp-route-q="@Model.Query"
+               aria-current="@(Model.Filter == f.Key ? "true" : null)">@f.Label · @Model.Counts.GetValueOrDefault(f.Key)</a>
+        }
+    </nav>
 </div>
 <section class="card">
     @foreach (var l in Model.Loans)
@@ -36,7 +55,14 @@
     }
     @if (Model.Loans.Count == 0)
     {
-        <partial name="_EmptyState" model="@(("No loans yet", (string?)"Loans appear here as soon as the treasurer records them.", "inset"))" />
+        @if (string.IsNullOrWhiteSpace(Model.Query) && Model.Filter == "all")
+        {
+            <partial name="_EmptyState" model="@(("No loans yet", (string?)"Loans appear here as soon as the treasurer records them.", "inset"))" />
+        }
+        else
+        {
+            <partial name="_EmptyState" model="@(("No loans match", (string?)"Try a different name or choose All.", "inset"))" />
+        }
     }
 </section>
 @if (Model.Voided.Count > 0)

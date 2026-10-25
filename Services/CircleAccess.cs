@@ -8,6 +8,7 @@ namespace UbuntuLedger.Services;
 public record CircleAccess(Circle Circle, Person Me, CircleRole Role, int TreasurerId, string? TreasurerPhone = null)
 {
     public bool IsTreasurer => Role == CircleRole.Treasurer;
+    public bool IsBackup => Role == CircleRole.Backup;
 
     public bool CanSee(Loan loan) => IsTreasurer || loan.BorrowerId == Me.Id;
 

@@ -3,7 +3,10 @@ namespace UbuntuLedger.Models;
 public enum CircleRole
 {
     Member = 0,
-    Treasurer = 1
+    Treasurer = 1,
+    // A member the treasurer trusts to help the treasurer back into their account if they forget their PIN.
+    // Has no other extra powers.
+    Backup = 2
 }
 
 public enum InterestType

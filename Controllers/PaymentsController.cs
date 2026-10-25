@@ -47,6 +47,15 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
         });
     }
 
+    // A printable receipt for a confirmed payment. Anyone who can see the payment can print it.
+    [HttpGet("{id:int}/receipt")]
+    public async Task<IActionResult> Receipt(int id)
+    {
+        var receipt = await loans.ReceiptAsync(Access, id);
+        if (receipt is null) return NotFound();
+        return View(new ReceiptViewModel { Receipt = receipt });
+    }
+
     // Proof files are never public: only someone who can see the loan can open them.
     [HttpGet("{id:int}/proof")]
     public async Task<IActionResult> Proof(int id)
