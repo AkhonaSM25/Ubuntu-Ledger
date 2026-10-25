@@ -43,37 +43,44 @@ public class CorrectionTests
         Assert.False((await t.Loans.VoidPaymentAsync(zanele, sent.Id!.Value, "still pending")).Succeeded);
     }
 
+    // The demo loans already have confirmed payments, so these tests use a brand-new loan for Nomsa.
+    private static async Task<(TestDb t, CircleAccess zanele, CircleAccess nomsa, int loanId)> NewLoanAsync()
+    {
+        var t = await TestDb.SeededAsync();
+        var zanele = await t.AccessAsync("Zanele Maseko");
+        var nomsa = await t.AccessAsync("Nomsa Khumalo");
+        var made = await t.Loans.CreateAsync(zanele, new NewLoan(nomsa.Me.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
+        Assert.True(made.Succeeded);
+        return (t, zanele, nomsa, made.Id!.Value);
+    }
+
     [Fact]
     public async Task A_loan_with_confirmed_payments_must_have_them_reversed_before_it_is_voided()
     {
-        using var t = await TestDb.SeededAsync();
-        var zanele = await t.AccessAsync("Zanele Maseko");
-        var thandi = await t.AccessAsync("Thandi Mokoena");
-        var loan = await t.Db.Loans.SingleAsync(l => l.Reference == "UL-0101");
-        var sent = await t.Loans.SubmitPaymentAsync(thandi, Pay(loan.Id, 1100));
+        var (t, zanele, nomsa, loanId) = await NewLoanAsync();
+        using var _ = t;
+        var sent = await t.Loans.SubmitPaymentAsync(nomsa, Pay(loanId, 100));
         await t.Loans.ConfirmPaymentAsync(zanele, sent.Id!.Value);
 
-        Assert.False((await t.Loans.VoidLoanAsync(thandi, loan.Id, "x")).Succeeded);               // not the treasurer
-        Assert.False((await t.Loans.VoidLoanAsync(zanele, loan.Id, "Wrong person")).Succeeded);    // payment still counts
-        await t.Loans.VoidPaymentAsync(zanele, sent.Id.Value, "Wrong loan");
-        Assert.True((await t.Loans.VoidLoanAsync(zanele, loan.Id, "Wrong person")).Succeeded);
-        Assert.False((await t.Loans.VoidLoanAsync(zanele, loan.Id, "twice")).Succeeded);
+        Assert.False((await t.Loans.VoidLoanAsync(nomsa, loanId, "x")).Succeeded);                 // not the treasurer
+        Assert.False((await t.Loans.VoidLoanAsync(zanele, loanId, "Wrong person")).Succeeded);      // payment still counts
+        Assert.True((await t.Loans.VoidPaymentAsync(zanele, sent.Id.Value, "Wrong loan")).Succeeded);
+        Assert.True((await t.Loans.VoidLoanAsync(zanele, loanId, "Wrong person")).Succeeded);
+        Assert.False((await t.Loans.VoidLoanAsync(zanele, loanId, "twice")).Succeeded);
 
-        Assert.DoesNotContain(await t.Loans.VisibleAsync(zanele), l => l.Loan.Id == loan.Id);
-        Assert.Contains(await t.Loans.VoidedAsync(zanele), l => l.Loan.Id == loan.Id);
-        Assert.False((await t.Loans.SubmitPaymentAsync(thandi, Pay(loan.Id, 10))).Succeeded);       // no payments on a voided loan
+        Assert.DoesNotContain(await t.Loans.VisibleAsync(zanele), l => l.Loan.Id == loanId);
+        Assert.Contains(await t.Loans.VoidedAsync(zanele), l => l.Loan.Id == loanId);
+        Assert.False((await t.Loans.SubmitPaymentAsync(nomsa, Pay(loanId, 10))).Succeeded);         // no payments on a voided loan
     }
 
     [Fact]
     public async Task Voiding_a_loan_cancels_the_payments_still_waiting()
     {
-        using var t = await TestDb.SeededAsync();
-        var zanele = await t.AccessAsync("Zanele Maseko");
-        var thandi = await t.AccessAsync("Thandi Mokoena");
-        var loan = await t.Db.Loans.SingleAsync(l => l.Reference == "UL-0101");
-        var sent = await t.Loans.SubmitPaymentAsync(thandi, Pay(loan.Id, 100));
+        var (t, zanele, nomsa, loanId) = await NewLoanAsync();
+        using var _ = t;
+        var sent = await t.Loans.SubmitPaymentAsync(nomsa, Pay(loanId, 100));
 
-        Assert.True((await t.Loans.VoidLoanAsync(zanele, loan.Id, "Entered by mistake")).Succeeded);
+        Assert.True((await t.Loans.VoidLoanAsync(zanele, loanId, "Entered by mistake")).Succeeded);
         Assert.Equal(PaymentStatus.Cancelled, (await t.Db.Repayments.SingleAsync(r => r.Id == sent.Id)).Status);
     }
 
@@ -104,10 +111,13 @@ public class CorrectionTests
     {
         using var t = await TestDb.SeededAsync();
         var zanele = await t.AccessAsync("Zanele Maseko");
+        var nomsa = await t.PersonAsync("Nomsa Khumalo");
         var before = await t.Loans.SnapshotAsync(zanele);
-        var loan = await t.Db.Loans.SingleAsync(l => l.Reference == "UL-0101");
-        await t.Loans.VoidLoanAsync(zanele, loan.Id, "Mistake");
-        var after = await t.Loans.SnapshotAsync(zanele);
-        Assert.Equal(before.Outstanding - 3300m, after.Outstanding);
+
+        var made = await t.Loans.CreateAsync(zanele, new NewLoan(nomsa.Id, 1000, 10, InterestType.Simple, TestDb.Today.AddDays(-10), 2));
+        Assert.True((await t.Loans.SnapshotAsync(zanele)).Outstanding > before.Outstanding);
+
+        Assert.True((await t.Loans.VoidLoanAsync(zanele, made.Id!.Value, "Mistake")).Succeeded);
+        Assert.Equal(before.Outstanding, (await t.Loans.SnapshotAsync(zanele)).Outstanding);
     }
 }

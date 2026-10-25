@@ -30,7 +30,8 @@ public class AccountService(LedgerDbContext db, LedgerClock clock, TimeProvider 
     public async Task<LoginResult> SignInAsync(string? phoneInput, string? pin)
     {
         var phone = PhoneNumber.Normalize(phoneInput);
-        var person = await db.People.FirstOrDefaultAsync(p => p.Phone == phone);
+        // Not tracked: the counters below are written straight to the database, so a tracked copy would go stale.
+        var person = await db.People.AsNoTracking().FirstOrDefaultAsync(p => p.Phone == phone);
         if (person?.PinHash is null)
         {
             Hasher.VerifyHashedPassword(new Person(), DummyHash, pin ?? "");
@@ -71,8 +72,9 @@ public class AccountService(LedgerDbContext db, LedgerClock clock, TimeProvider 
                 .SetProperty(p => p.LockedUntil, (DateTime?)null));
         if (verdict == PasswordVerificationResult.SuccessRehashNeeded)
         {
-            person.PinHash = Hasher.HashPassword(person, pin!);
-            await db.SaveChangesAsync();
+            var upgraded = Hasher.HashPassword(person, pin!);
+            await db.People.Where(p => p.Id == person.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.PinHash, upgraded));
         }
         return new LoginResult(person, null);
     }
