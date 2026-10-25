@@ -31,6 +31,7 @@
         <div class="title-row"><h1 class="page-title">@loan.Borrower.Name</h1>@Ui.Chip(s.Status)</div>
         <p class="page-sub">Issued @Format.Date(loan.StartDate) · @(loan.RatePercent.ToString("0.##"))% @interestText interest · @Format.Plural(loan.Term, "monthly payment")</p>
     </div>
+    <a class="btn btn--secondary stretch-m" asp-action="Statement" asp-route-circleId="@circleId" asp-route-id="@loan.Id">@Ui.Icon("download", 18)Statement</a>
     @if (s.IsOpen && s.Available > 0)
     {
         <a class="btn btn--gold stretch-m" asp-controller="Payments" asp-action="Create" asp-route-circleId="@circleId" asp-route-loanId="@loan.Id">@Ui.Icon("down", 20, 2.1)@(loan.BorrowerId == access.Me.Id ? "I made a payment" : "I received a payment")</a>

@@ -583,3 +583,13 @@ a.filter-chip[aria-current='true'] { border-color: var(--green); background: var
 .legal ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .legal a, .legal-links a, .login__form a { color: var(--green); font-weight: 600; }
 .legal-links { margin-top: 8px; }
+
+/* printable statement and receipt */
+.statement { width: 100%; border-collapse: collapse; font-size: 15px; }
+.statement th, .statement td { padding: 10px 8px; border-bottom: 1px solid var(--line, #e3e7e4); text-align: left; vertical-align: top; }
+.statement th { font-size: 13px; color: var(--muted); font-weight: 700; }
+.statement .num { text-align: right; white-space: nowrap; }
+.receipt { margin: 20px 0 0; display: flex; flex-direction: column; gap: 12px; }
+.receipt > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; border-top: 1px solid var(--line, #e3e7e4); padding-top: 12px; }
+.receipt dt { color: var(--muted); font-size: 14px; }
+.receipt dd { margin: 0; font-weight: 700; text-align: right; }

@@ -21,7 +21,7 @@
             @Ui.Avatar(m.Circle.Name[..1].ToUpperInvariant(), "square", solid: treasurer)
             <span class="row__main">
                 <span class="row__title ellipsis" style="font-size:17px">@m.Circle.Name</span>
-                <span class="row__sub">@Format.Plural(m.Circle.Memberships.Count, "member") · @(treasurer ? "you are the treasurer" : "you are a member")</span>
+                <span class="row__sub">@Format.Plural(m.Circle.Memberships.Count, "member") · @(treasurer ? "you are the treasurer" : m.Role == CircleRole.Backup ? "you are the backup treasurer" : "you are a member")</span>
             </span>
             @Ui.Chip(treasurer ? "treasurer" : "member")
             <span class="row__chev">@Ui.Icon("chevronRight", 18)</span>

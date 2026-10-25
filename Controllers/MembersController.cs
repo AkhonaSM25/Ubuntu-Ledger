@@ -27,8 +27,17 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         bool Match(string name) => string.IsNullOrWhiteSpace(q) || name.Contains(q.Trim(), StringComparison.OrdinalIgnoreCase);
         bool InFilter(MemberSummary m, string f) => f == "all" || StatusKey(m.Status) == f;
 
+        var current = people.Select(p => p.Id).ToHashSet();
+        var former = all.Where(l => !current.Contains(l.Loan.BorrowerId))
+            .GroupBy(l => l.Loan.BorrowerId)
+            .Select(g => MemberSummary.From(g.First().Loan.Borrower, all))
+            .Where(m => Match(m.Person.Name))
+            .OrderBy(m => m.Person.Name)
+            .ToList();
+
         return View(new MembersViewModel
         {
+            Former = filter == "all" ? former : [],
             Rows = summaries.Where(m => InFilter(m, filter) && Match(m.Person.Name)).ToList(),
             Pending = filter == "all" ? pending.Where(p => Match(p.Name)).ToList() : [],
             Counts = Filters.ToDictionary(f => f, f => f == "all" ? summaries.Count + pending.Count : summaries.Count(m => InFilter(m, f))),
@@ -74,6 +83,8 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         {
             Member = summary, MemberSince = membership.JoinedOn, Stats = stats, Timeline = timeline,
             CanResetPin = canReset,
+            IsBackup = membership.Role == CircleRole.Backup,
+            CanManage = membership.Role != CircleRole.Treasurer && membership.PersonId != Access.Me.Id,
             ResetLink = resetLink,
             ResetWhatsAppUrl = resetLink is null ? null : WhatsApp.Link(membership.Person.Phone,
                 $"Hi {membership.Person.FirstName}, here is your link to set a new PIN for Ubuntu Ledger: {resetLink} It works once and expires in {AccountService.ResetLinkLife.TotalHours:0} hours."),
@@ -89,6 +100,65 @@ public class MembersController(CircleAccessService access, LoanService loans, Ci
         if (token is null) Toast(error!);
         else TempData["ResetLink"] = Url.Action("ResetPin", "Account", new { token }, Request.Scheme);
         return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, personId });
+    }
+
+    // The treasurer chooses a backup treasurer, or takes the role away again.
+    [HttpPost("{personId:int}/backup"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Backup(int personId, bool appoint)
+    {
+        if (!Access.IsTreasurer) return NotFound();
+        var result = await circles.SetBackupAsync(Access, personId, appoint);
+        Toast(result.Succeeded ? (appoint ? "Backup treasurer chosen." : "Backup treasurer removed.") : result.Error!);
+        return RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, personId });
+    }
+
+    // The treasurer removes a member. Their loans and payments stay in the history.
+    [HttpPost("{personId:int}/remove"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Remove(int personId)
+    {
+        if (!Access.IsTreasurer) return NotFound();
+        var result = await circles.RemoveMemberAsync(Access, personId);
+        Toast(result.Succeeded ? "Member removed. Their past loans and payments stay in the history." : result.Error!);
+        return result.Succeeded
+            ? RedirectToAction(nameof(Index), new { circleId = Access.Circle.Id })
+            : RedirectToAction(nameof(Details), new { circleId = Access.Circle.Id, personId });
+    }
+
+    // Any member can leave once they owe nothing.
+    [HttpPost("leave"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Leave()
+    {
+        var result = await circles.RemoveMemberAsync(Access, Access.Me.Id);
+        Toast(result.Succeeded ? $"You left {Access.Circle.Name}." : result.Error!);
+        return result.Succeeded
+            ? RedirectToAction("Index", "Circles")
+            : RedirectToAction("Index", "Dashboard", new { circleId = Access.Circle.Id });
+    }
+
+    // Backup treasurer only: a reset link for the treasurer who forgot their PIN.
+    [HttpGet("treasurer-recovery")]
+    public async Task<IActionResult> TreasurerRecovery()
+    {
+        if (!Access.IsBackup) return NotFound();
+        var treasurer = await db.People.AsNoTracking().FirstAsync(p => p.Id == Access.TreasurerId);
+        var link = TempData["ResetLink"] as string;
+        return View(new TreasurerRecoveryViewModel
+        {
+            TreasurerName = treasurer.Name,
+            ResetLink = link,
+            ResetWhatsAppUrl = link is null ? null : WhatsApp.Link(treasurer.Phone,
+                $"Hi {treasurer.FirstName}, here is your link to set a new PIN for Ubuntu Ledger: {link} It works once and expires in {AccountService.ResetLinkLife.TotalHours:0} hours."),
+        });
+    }
+
+    [HttpPost("treasurer-recovery"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateTreasurerRecovery()
+    {
+        if (!Access.IsBackup) return NotFound();
+        var (token, error) = await accounts.CreatePinResetAsync(Access, Access.TreasurerId);
+        if (token is null) Toast(error!);
+        else TempData["ResetLink"] = Url.Action("ResetPin", "Account", new { token }, Request.Scheme);
+        return RedirectToAction(nameof(TreasurerRecovery), new { circleId = Access.Circle.Id });
     }
 
     [HttpGet("invite")]

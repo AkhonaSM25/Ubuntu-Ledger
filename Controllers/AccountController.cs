@@ -27,6 +27,10 @@ public class AccountController(AccountService accounts, CircleService circles, I
         ShowDemo = DemoMode,
     });
 
+    // Nobody is looked up here: showing who is in which circle to a stranger would leak it.
+    [HttpGet("/forgot-pin")]
+    public IActionResult ForgotPin() => View();
+
     [HttpPost("/login"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginViewModel model)
     {

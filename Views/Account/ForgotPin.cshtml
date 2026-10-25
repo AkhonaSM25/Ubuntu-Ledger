@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Forgot your PIN";
+}
+<div class="page">
+    <main class="page__body" id="main" tabindex="-1">
+        <div class="page__inner stack" style="max-width:560px">
+            <partial name="_Brand" model="(false, false, true)" />
+            <div>
+                <h1 class="page-title">Forgot your PIN?</h1>
+                <p class="page-sub">We never see your PIN, so we cannot tell it to you. Your treasurer can send you a link to choose a new one.</p>
+            </div>
+            <section class="card card--pad stack">
+                <ol class="small" style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px">
+                    <li>Message your circle's treasurer, for example: <em>"Hi, I forgot my Ubuntu Ledger PIN. Please send me a reset link."</em></li>
+                    <li>They make a one-time link and send it to you on WhatsApp.</li>
+                    <li>Open the link and choose six digits that only you know. It works once and expires after two days.</li>
+                </ol>
+            </section>
+            <section class="card card--pad stack">
+                <h2 class="section-title">If you are the treasurer</h2>
+                <p class="small muted" style="margin:0">Ask the backup treasurer your circle chose. They can make you a reset link from their own page. If you have not chosen one yet, do it now: open a member's page and choose <strong>Make backup treasurer</strong>.</p>
+            </section>
+            <p class="small muted">Too many wrong PINs lock sign-in for 15 minutes. If you are in more than one circle, a treasurer cannot reset your PIN, so contact the person who runs this site.</p>
+            <a class="btn btn--primary" href="/login" style="align-self:flex-start">Back to sign in</a>
+        </div>
+    </main>
+</div>

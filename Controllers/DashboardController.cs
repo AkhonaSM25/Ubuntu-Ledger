@@ -50,7 +50,7 @@ public class DashboardController(CircleAccessService access, LoanService loans, 
         var (openRequests, recentRequests) = await requests.ListAsync(Access);
         var shownRequests = Access.IsTreasurer ? openRequests : openRequests.Concat(recentRequests).Take(2).ToList();
 
-        var hasMembers = await db.Memberships.AnyAsync(m => m.CircleId == Access.Circle.Id && m.Role == CircleRole.Member);
+        var hasMembers = await db.Memberships.AnyAsync(m => m.CircleId == Access.Circle.Id && m.Role != CircleRole.Treasurer);
         return View(new DashboardViewModel
         {
             Stats = stats,
