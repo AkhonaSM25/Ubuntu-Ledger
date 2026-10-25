@@ -173,7 +173,7 @@ public class PaymentsController(CircleAccessService access, LoanService loans, P
         var p = row.Payment;
         if (p.Status != PaymentStatus.Pending || !row.IsMine) return null;
 
-        var url = Url.Action(nameof(Details), new { circleId = Access.Circle.Id, id = p.Id }, Request.Scheme);
+        var url = Url.Action(nameof(Details), null, new { circleId = Access.Circle.Id, id = p.Id }, Request.Scheme);
         if (p.SubmittedBy == PaymentSide.Payer)
         {
             // The borrower paid, so the treasurer confirms. On the treasurer's own loan, any other member can,
