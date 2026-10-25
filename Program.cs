@@ -12,6 +12,17 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+// SQLite creates the database file but not the folder it sits in. On a fresh host (for example /home/data on Azure
+// App Service) that folder does not exist yet, so create it before anything opens the database.
+var databaseFile = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connectionString).DataSource;
+if (!string.IsNullOrWhiteSpace(databaseFile) && databaseFile != ":memory:"
+    && !databaseFile.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+{
+    var databaseFolder = Path.GetDirectoryName(Path.GetFullPath(databaseFile));
+    if (!string.IsNullOrEmpty(databaseFolder))
+        Directory.CreateDirectory(databaseFolder);
+}
+
 // SQLite keeps the app portable; a hosted database is a configuration change.
 builder.Services.AddDbContext<LedgerDbContext>(options => options.UseSqlite(connectionString));
 
